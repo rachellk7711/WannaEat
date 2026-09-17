@@ -2,6 +2,7 @@
 <pre id="report">RUNNING</pre><iframe id="app" style="width:390px;height:844px;border:0" title="테스트 앱"></iframe>
 <script type="module">
 import { loadCatalog } from '/src/lib/catalog-loader.ts'
+import { imageForExtraction } from '/src/lib/extract.ts'
 const report = document.querySelector('#report'), frame = document.querySelector('#app')
 const results = []
 const check = (name, condition) => { results.push({ name, pass: !!condition }); if (!condition) throw Error(name) }
@@ -15,6 +16,17 @@ if (new URLSearchParams(location.search).get('run') !== 'isolated') {
   report.textContent = '테스트 전용 새 브라우저 프로필에서 ?run=isolated로 실행하세요. 해당 origin의 저장 자료를 비우는 테스트입니다.'
 } else try {
   localStorage.clear()
+  const source = document.createElement('canvas')
+  source.width = 2000; source.height = 1200
+  const paint = source.getContext('2d')
+  paint.fillStyle = '#fff'; paint.fillRect(0,0,2000,1200); paint.fillStyle = '#000'; paint.fillRect(200,120,1000,480)
+  const prepared = await imageForExtraction(source.toDataURL('image/png'), { x:0.1, y:0.1, width:0.5, height:0.4 })
+  check('only the chosen area is prepared as jpeg', prepared.mimeType === 'image/jpeg' && prepared.preview.startsWith('data:image/jpeg') && !/^data:image\/png/.test(prepared.preview))
+  const preparedSize = await new Promise(resolve => { const image = new Image(); image.onload = () => resolve([image.naturalWidth, image.naturalHeight]); image.src = prepared.preview })
+  check('crop keeps its own pixels and stays under 1600px', preparedSize[0] === 1000 && preparedSize[1] === 480)
+  const whole = await imageForExtraction(source.toDataURL('image/png'))
+  const wholeSize = await new Promise(resolve => { const image = new Image(); image.onload = () => resolve([image.naturalWidth, image.naturalHeight]); image.src = whole.preview })
+  check('full photo is resized down to 1600px', wholeSize[0] === 1600 && wholeSize[1] === 960)
   const online = await loadCatalog()
   check('real Supabase catalog loaded', online.source === 'supabase')
   const originalFetch = window.fetch

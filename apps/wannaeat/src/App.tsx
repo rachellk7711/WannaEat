@@ -6,6 +6,8 @@ import { analyzeIngredients } from './domain/analysis.ts'
 import { bundledRelease, bundledRules, loadCatalog } from './lib/catalog-loader.ts'
 import { deviceStorage, isNative, LEGACY_KEY, PREFERENCES_KEY } from './lib/storage.ts'
 import { extractIngredients, imageForExtraction } from './lib/extract.ts'
+import type { CropArea } from './lib/extract.ts'
+import CropBox from './components/CropBox.tsx'
 import CriteriaEditor from './components/CriteriaEditor.tsx'
 import { BrandMark, Icon, LabelArt } from './components/Brand.tsx'
 import './App.css'
@@ -29,6 +31,8 @@ function App() {
   const [imageBusy, setImageBusy] = useState(false)
   const [imageMessage, setImageMessage] = useState('')
   const [consented, setConsented] = useState(false)
+  const [crop, setCrop] = useState<CropArea | null>(null)
+  const [pending, setPending] = useState<{ base64: string; mimeType: string; preview: string } | null>(null)
   const [extractBusy, setExtractBusy] = useState(false)
   const [ingredientText, setIngredientText] = useState('')
   const [analysisMessage, setAnalysisMessage] = useState('')
@@ -94,13 +98,20 @@ function App() {
     window.scrollTo(0, 0)
   }
 
+  // 보낼 픽셀을 먼저 만들어 사용자에게 보여준다. 확인 전에는 서버로 아무것도 보내지 않는다.
+  async function preparePhoto() {
+    if (!imageUri || extractBusy) return
+    setAnalysisMessage('')
+    try { setPending(await imageForExtraction(imageUri, crop ?? undefined)) }
+    catch (error) { setAnalysisMessage(error instanceof Error ? error.message : '사진을 준비하지 못했어요.') }
+  }
+
   async function readPhoto() {
-    if (!imageUri || !consented || extractBusy) return
+    if (!pending || !consented || extractBusy) return
     setExtractBusy(true)
     setAnalysisMessage('')
     try {
-      const image = await imageForExtraction(imageUri)
-      const extracted = await extractIngredients(image)
+      const extracted = await extractIngredients({ base64: pending.base64, mimeType: pending.mimeType })
       if (!extracted.readable || !extracted.ingredientText.trim()) throw new Error('원재료를 읽지 못했어요. 원재료명 부분이 선명한 사진을 골라주세요.')
       setIngredientText(extracted.ingredientText)
       go('review')
@@ -154,10 +165,12 @@ function App() {
     } finally { setImageBusy(false) }
   }
 
-  function setPhoto(uri: string) {
+  function setPhoto(uri: string | null) {
     setImageMessage('')
     setAnalysisMessage('')
     setConsented(false)
+    setCrop(null)
+    setPending(null)
     setIngredientText('')
     setAnalysis(null)
     setImageUri(uri)
@@ -187,10 +200,13 @@ function App() {
       {page === 'criteria' && (!loaded ? <p className="empty" role="status">기준을 불러오고 있어요.</p> : readFailed ? <p className="empty">기준을 다시 불러온 뒤 설정할 수 있어요.</p> : <CriteriaEditor catalog={catalog} rows={draft} onChange={setDraft} busy={busy} onSave={() => void save()} review={review} onCancel={() => go('home')} />)}
       {page === 'image' && <>
         <section className="intro"><span className="eyebrow">READ THE LABEL</span><h1>이름보다 자세히,<br />원재료를 봐요.</h1><p>제품의 원재료 표시가<br />잘 보이는 사진을 골라주세요.</p></section>
-        <div className={`photo-frame ${imageUri ? 'has-photo' : ''}`}>{imageUri ? <img src={imageUri} alt="선택한 원재료 표시" onError={() => { setImageUri(null); setImageMessage('표시할 수 없는 사진이에요. JPG 또는 PNG로 다시 골라주세요.') }} /> : <><LabelArt /><span>원재료명 영역을 담아주세요</span></>}</div>
-        <div className="image-actions"><button className="primary" type="button" disabled={imageBusy || extractBusy} onClick={() => void pickImage()}><Icon name="image" size={20} />{imageBusy ? '사진을 불러오는 중…' : imageUri ? '다른 사진 고르기' : '사진 선택하기'}</button><button className="secondary" type="button" disabled={imageBusy || extractBusy} onClick={() => void pickImage(true)}><Icon name="camera" size={20} /> 직접 촬영하기</button>{imageUri && <button className="text-button" type="button" onClick={() => { setImageUri(null); setConsented(false) }}>사진 지우기</button>}</div>
+        {imageUri
+          ? <CropBox src={imageUri} area={crop} onChange={area => { setCrop(area); setPending(null); setConsented(false) }} onError={() => { setImageUri(null); setImageMessage('표시할 수 없는 사진이에요. JPG 또는 PNG로 다시 골라주세요.') }} />
+          : <div className="photo-frame"><LabelArt /><span>원재료명 영역을 담아주세요</span></div>}
+        <div className="image-actions"><button className="primary" type="button" disabled={imageBusy || extractBusy} onClick={() => void pickImage()}><Icon name="image" size={20} />{imageBusy ? '사진을 불러오는 중…' : imageUri ? '다른 사진 고르기' : '사진 선택하기'}</button><button className="secondary" type="button" disabled={imageBusy || extractBusy} onClick={() => void pickImage(true)}><Icon name="camera" size={20} /> 직접 촬영하기</button>{imageUri && <button className="text-button" type="button" onClick={() => setPhoto(null)}>사진 지우기</button>}</div>
         {imageMessage && <p className="notice" role="status">{imageMessage}</p>}
-        {imageUri && <section className="extract-card"><h2>사진에서 원재료 읽기</h2><p>원재료명 부분을 읽기 위해 사진을 분석 서버로 전송해요. 서버는 사진을 저장하지 않고, 읽은 텍스트를 보여준 뒤 직접 수정할 수 있어요.</p><label className="consent"><input type="checkbox" checked={consented} disabled={extractBusy} onChange={event => setConsented(event.target.checked)} /><span>사진 전송과 원재료 텍스트 추출에 동의해요.</span></label><button className="primary" type="button" disabled={!consented || extractBusy} onClick={() => void readPhoto()}>{extractBusy ? '원재료를 읽는 중…' : '원재료 읽기'}</button></section>}
+        {imageUri && !pending && <section className="extract-card"><h2>보낼 부분 고르기</h2><p>{crop ? '고른 영역만 보내요. 다시 끌면 영역을 바꿀 수 있어요.' : '원재료명 부분을 끌어서 고르면 그 부분만 보내요. 고르지 않으면 사진 전체를 보내요.'}</p><button className="primary" type="button" onClick={() => void preparePhoto()}>보낼 사진 확인하기 <Icon name="arrow" size={19} /></button></section>}
+        {pending && <section className="extract-card"><h2>이 부분만 보내요</h2><img className="send-preview" src={pending.preview} alt="분석 서버로 보낼 사진" /><p>이 그림에 보이는 부분만 분석 서버로 전송해요. 이름·주소·주문번호가 보이면 영역을 다시 골라주세요. 서버는 사진을 저장하지 않고, 읽은 텍스트는 다음 화면에서 직접 고칠 수 있어요.</p><label className="consent"><input type="checkbox" checked={consented} disabled={extractBusy} onChange={event => setConsented(event.target.checked)} /><span>이 사진을 보내 원재료 텍스트를 읽는 데 동의해요.</span></label><button className="primary" type="button" disabled={!consented || extractBusy} onClick={() => void readPhoto()}>{extractBusy ? '원재료를 읽는 중…' : '원재료 읽기'}</button><button className="text-button" type="button" disabled={extractBusy} onClick={() => { setPending(null); setConsented(false) }}>영역 다시 고르기</button></section>}
         {analysisMessage && <p className="notice" role="status">{analysisMessage}</p>}
         <div className="photo-note"><strong>사진은 분석 요청에만 사용해요.</strong><p>결과를 신뢰하기 전에 읽은 원재료를 확인하고 필요하면 고쳐 주세요. 사진과 결과는 아직 분석 이력으로 저장하지 않아요.</p></div>
       </>}

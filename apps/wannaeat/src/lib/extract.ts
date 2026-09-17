@@ -9,21 +9,36 @@ function publicKey(key: string) {
   try { return JSON.parse(atob(key.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).role === 'anon' } catch { return false }
 }
 
-export async function imageForExtraction(uri: string) {
-  const response = await fetch(uri)
-  const blob = await response.blob()
-  if (!['image/jpeg', 'image/png', 'image/webp'].includes(blob.type)) throw new Error('JPG, PNG 또는 WebP 이미지를 골라주세요.')
-  if (blob.size > MAX_IMAGE_BYTES) throw new Error('분석할 사진은 4MB 이하로 골라주세요. 원재료명 부분을 가까이 찍으면 더 잘 읽어요.')
-  const base64 = await new Promise<string>((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onerror = () => reject(new Error('사진을 읽지 못했어요.'))
-    reader.onload = () => {
-      if (typeof reader.result !== 'string') reject(new Error('사진을 읽지 못했어요.'))
-      else resolve(reader.result.slice(reader.result.indexOf(',') + 1))
-    }
-    reader.readAsDataURL(blob)
+/** 사용자가 고른 영역. 0~1 비율이라 화면 크기와 무관하다. 없으면 사진 전체다. */
+export type CropArea = { x: number; y: number; width: number; height: number }
+const MAX_EDGE = 1600
+
+function loadImage(uri: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image()
+    image.onload = () => resolve(image)
+    image.onerror = () => reject(new Error('사진을 읽지 못했어요. 다른 사진을 골라주세요.'))
+    image.src = uri
   })
-  return { base64, mimeType: blob.type }
+}
+
+/** 보낼 픽셀만 남긴다 — 자른 영역을 잘라내고, 긴 변을 1600px 로 줄여 JPEG 로 다시 그린다. */
+export async function imageForExtraction(uri: string, crop?: CropArea) {
+  const image = await loadImage(uri)
+  const area = crop ?? { x: 0, y: 0, width: 1, height: 1 }
+  const sx = Math.round(area.x * image.naturalWidth), sy = Math.round(area.y * image.naturalHeight)
+  const sw = Math.max(1, Math.round(area.width * image.naturalWidth)), sh = Math.max(1, Math.round(area.height * image.naturalHeight))
+  const scale = Math.min(1, MAX_EDGE / Math.max(sw, sh))
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.max(1, Math.round(sw * scale)); canvas.height = Math.max(1, Math.round(sh * scale))
+  const context = canvas.getContext('2d')
+  if (!context) throw new Error('사진을 처리하지 못했어요. 다시 시도해 주세요.')
+  context.drawImage(image, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height)
+  const dataUri = canvas.toDataURL('image/jpeg', 0.85)
+  const base64 = dataUri.slice(dataUri.indexOf(',') + 1)
+  // base64 는 3바이트를 4글자로 적는다.
+  if (base64.length * 3 / 4 > MAX_IMAGE_BYTES) throw new Error('사진이 너무 커요. 원재료명 부분만 잘라서 보내주세요.')
+  return { base64, mimeType: 'image/jpeg', preview: dataUri }
 }
 
 export async function extractIngredients(image: { base64: string; mimeType: string }): Promise<ExtractedIngredients> {
