@@ -1,0 +1,20 @@
+# 비밀 정보
+.env.local
+.env*.local
+.env
+.env.*
+!.env.example
+
+# 로컬 검증·임시 출력
+**/__pycache__/
+*.py[cod]
+/out*.txt
+/scratch_verify*.py
+/scripts/_classify_log.txt
+/_archive*/
+
+# 원본·가공 데이터 (대용량, 재다운로드 가능)
+data/
+
+# 스크립트 실행 결과
+scripts/_result_*.txt

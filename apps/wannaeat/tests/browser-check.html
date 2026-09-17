@@ -1,0 +1,71 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>WannaEat browser checks</title></head><body>
+<pre id="report">RUNNING</pre><iframe id="app" style="width:390px;height:844px;border:0" title="테스트 앱"></iframe>
+<script type="module">
+import { loadCatalog } from '/src/lib/catalog-loader.ts'
+const report = document.querySelector('#report'), frame = document.querySelector('#app')
+const results = []
+const check = (name, condition) => { results.push({ name, pass: !!condition }); if (!condition) throw Error(name) }
+const wait = async (condition) => { for (let n=0;n<160;n++) { if (condition()) return; await new Promise(r=>setTimeout(r,100)) } throw Error('Timed out') }
+const doc = () => frame.contentDocument
+const button = label => doc().querySelector(`button[aria-label="${label}"]`)
+const textButton = text => [...doc().querySelectorAll('button')].find(b=>b.textContent.includes(text))
+const render = async () => new Promise(r=>setTimeout(r,100))
+if (new URLSearchParams(location.search).get('run') !== 'isolated') {
+  report.textContent = '테스트 전용 새 브라우저 프로필에서 ?run=isolated로 실행하세요. 해당 origin의 저장 자료를 비우는 테스트입니다.'
+} else try {
+  localStorage.clear()
+  const online = await loadCatalog()
+  check('real Supabase catalog loaded', online.source === 'supabase')
+  const originalFetch = window.fetch
+  window.fetch = async () => { throw Error('Simulated offline') }
+  const offline = await loadCatalog()
+  check('offline uses cached version', offline.source === 'cached' && offline.release.rulesetVersion === online.release.rulesetVersion)
+  localStorage.removeItem('wannaeat.catalog.v1')
+  const freshOffline = await loadCatalog()
+  check('first offline start uses bundle', freshOffline.source === 'bundle')
+  window.fetch = originalFetch
+  frame.src = '/'
+  await wait(()=>textButton('설정하기') && !textButton('설정하기').disabled)
+  check('green actual app home', doc().querySelector('.scan-card') && getComputedStyle(doc().querySelector('.primary')).backgroundColor === 'rgb(30, 99, 77)')
+  textButton('설정하기').click(); await wait(()=>button('곡물 전체 피해요'))
+  check('three-level catalog', doc().querySelectorAll('.catalog-group').length === 6 && doc().querySelectorAll('.criterion-row').length === 62)
+  check('blocked subgroup has no select-all', !button('그 밖의 기름·지방 전체 피해요'))
+  button('곡물 전체 피해요').click(); await render()
+  button('밀 알려만줘요').click(); await render()
+  check('child override visible', button('밀 알려만줘요').getAttribute('aria-pressed') === 'true')
+  button('밀 선택 해제').click(); await render()
+  check('child removal preserves siblings', doc().querySelectorAll('.criterion-row.chosen').length === 6)
+  button('밀 피해요').click(); await render()
+  const search = doc().querySelector('input[type=search]')
+  const inputSetter = Object.getOwnPropertyDescriptor(frame.contentWindow.HTMLInputElement.prototype, 'value').set
+  inputSetter.call(search, '박력분'); search.dispatchEvent(new frame.contentWindow.Event('input',{bubbles:true})); await render()
+  check('alias search narrows to wheat', doc().querySelectorAll('.criterion-row').length === 1 && !!button('밀 피해요'))
+  textButton('기준 저장하기').click(); await wait(()=>doc().querySelector('.my-criteria'))
+  const stored = JSON.parse(localStorage.getItem('wannaeat.criteria.v2'))
+  check('new storage envelope', stored.rulesetVersion === online.release.rulesetVersion && stored.selections.length === 7 && stored.selections.every(r=>r.kind && r.id && ['avoid','inform'].includes(r.strength) && !('name' in r)))
+  await new Promise(resolve => { frame.addEventListener('load', resolve, {once:true}); frame.contentWindow.location.reload() }); await wait(()=>textButton('수정') && !textButton('수정').disabled)
+  check('saved criteria survive reload', doc().querySelector('.my-criteria').textContent.includes('피해요 7'))
+  textButton('수정').click(); await wait(()=>button('곡물 전체 피해요'))
+  button('밀 알려만줘요').click(); await render()
+  textButton('변경 취소').click(); await wait(()=>doc().querySelector('.my-criteria'))
+  check('cancel does not write draft', localStorage.getItem('wannaeat.criteria.v2') === JSON.stringify(stored))
+  for (const width of [320,360,390]) {
+    frame.style.width = width+'px'; await render()
+    check(`home fits ${width}px`, doc().documentElement.scrollWidth <= width)
+    textButton('수정').click(); await wait(()=>button('곡물 전체 피해요'))
+    check(`criteria fits ${width}px`, doc().documentElement.scrollWidth <= width)
+    textButton('변경 취소').click(); await wait(()=>doc().querySelector('.my-criteria'))
+  }
+  textButton('라벨 확인하기').click(); await wait(()=>doc().querySelector('.photo-frame'))
+  check('photo remains an honest preview', doc().querySelector('.photo-note').textContent.includes('미리보기'))
+  localStorage.setItem('wannaeat.criteria.v2', JSON.stringify({ rulesetVersion:'old', selections:[{kind:'criterion',id:'removed_id',strength:'avoid'}] }))
+  frame.src = '/?check=review#criteria'; await wait(()=>textButton('변경된 기준 확인하고 저장'))
+  check('unknown selection and version require review', doc().body.textContent.includes('removed_id'))
+  textButton('변경된 기준 확인하고 저장').click(); await wait(()=>doc().querySelector('.my-criteria'))
+  check('old preferences backed up before migration', JSON.parse(localStorage.getItem('wannaeat.criteria.v2.previous')).rulesetVersion === 'old')
+  localStorage.setItem('wannaeat.criteria.v2','{broken')
+  frame.src = '/?check=corrupt#criteria'; await wait(()=>doc().body.textContent.includes('이전에 저장한 기준을 읽을 수 없어요'))
+  check('corrupt settings are not silently overwritten', localStorage.getItem('wannaeat.criteria.v2') === '{broken')
+  report.textContent = 'PASS\n'+JSON.stringify(results,null,2)
+} catch (error) { report.textContent = 'FAIL '+error.message+'\n'+JSON.stringify(results,null,2)+'\nURL: '+frame.contentWindow.location.href+'\nBODY: '+doc().body.innerText.slice(0,1600) }
+</script></body></html>
