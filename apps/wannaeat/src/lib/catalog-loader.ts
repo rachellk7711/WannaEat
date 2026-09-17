@@ -10,7 +10,7 @@ const CACHE_KEY = 'wannaeat.catalog.v2'
 export const bundledRelease = parseRelease(snapshot)
 export const bundledRules = parseRuleSet(ruleSnapshot)
 if (bundledRules.rulesetVersion !== bundledRelease.rulesetVersion) throw new Error('Bundled catalog and rules differ')
-export type CatalogResult = { release: Release; rules: RuleSet; source: 'supabase' | 'cached' | 'bundle' }
+export type CatalogResult = { release: Release; rules: RuleSet; source: 'supabase' | 'cached' | 'bundle'; verified: boolean }
 
 function publicKey(key: string) {
   if (key.startsWith('sb_publishable_')) return true
@@ -21,14 +21,14 @@ function publicKey(key: string) {
 }
 
 export async function loadCatalog(): Promise<CatalogResult> {
-  let fallback: CatalogResult = { release: bundledRelease, rules: bundledRules, source: 'bundle' }
+  let fallback: CatalogResult = { release: bundledRelease, rules: bundledRules, source: 'bundle', verified: false }
   try {
     const cached = await deviceStorage.get(CACHE_KEY)
     if (cached) {
       const value = JSON.parse(cached)
       const release = parseRelease(value.release)
       const rules = parseRuleSet(value.rules)
-      if (release.rulesetVersion === rules.rulesetVersion) fallback = { release, rules, source: 'cached' }
+      if (release.rulesetVersion === rules.rulesetVersion) fallback = { release, rules, source: 'cached', verified: false }
     }
   } catch { /* Bundled snapshot is usable when caching is unavailable. */ }
   const base = import.meta.env.VITE_SUPABASE_URL || 'https://rnfhcwoqcrdoevabtjku.supabase.co'
@@ -51,6 +51,10 @@ export async function loadCatalog(): Promise<CatalogResult> {
     if (manifestText.length > 4096) throw new Error('Manifest too large')
     const manifest = JSON.parse(manifestText)
     if (typeof manifest.rulesetVersion !== 'string' || !/^[a-zA-Z0-9._-]+$/.test(manifest.rulesetVersion) || manifest.catalogPath !== `catalogs/${manifest.rulesetVersion}.json` || manifest.rulesPath !== `rules/${manifest.rulesetVersion}.json` || !/^[a-f0-9]{64}$/.test(manifest.catalogSha256) || !/^[a-f0-9]{64}$/.test(manifest.rulesSha256)) throw new Error('Invalid manifest')
+    // 이미 같은 버전을 갖고 있으면 다시 받지 않는다. 같은 파일을 매번 내려받으면 전송량만 쌓인다.
+    const current = (candidate: CatalogResult) => candidate.release.rulesetVersion === manifest.rulesetVersion && candidate.rules.rulesetVersion === manifest.rulesetVersion
+    if (current(fallback)) return { ...fallback, verified: true }
+    if (bundledRelease.rulesetVersion === manifest.rulesetVersion) return { release: bundledRelease, rules: bundledRules, source: 'bundle' as const, verified: true }
     const fetchAsset = async (path: string, checksum: string, label: string) => {
       const file = await fetch(new URL(`${prefix}${path}`, base), options)
       if (!file.ok) throw new Error(`${label} HTTP ${file.status}`)
@@ -66,7 +70,7 @@ export async function loadCatalog(): Promise<CatalogResult> {
     if (release.rulesetVersion !== manifest.rulesetVersion) throw new Error('Catalog version mismatch')
     if (rules.rulesetVersion !== manifest.rulesetVersion) throw new Error('Rules version mismatch')
     try { await deviceStorage.set(CACHE_KEY, JSON.stringify({ release, rules })) } catch { /* Cache is optional. */ }
-    return { release, rules, source: 'supabase' }
+    return { release, rules, source: 'supabase', verified: true }
   } catch (error) {
     console.warn('Catalog fetch failed; using a validated local snapshot.', error instanceof Error ? error.message : 'unknown')
     return fallback

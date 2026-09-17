@@ -28,11 +28,12 @@ if (new URLSearchParams(location.search).get('run') !== 'isolated') {
   const wholeSize = await new Promise(resolve => { const image = new Image(); image.onload = () => resolve([image.naturalWidth, image.naturalHeight]); image.src = whole.preview })
   check('full photo is resized down to 1600px', wholeSize[0] === 1600 && wholeSize[1] === 960)
   const online = await loadCatalog()
-  check('real Supabase catalog loaded', online.source === 'supabase')
+  check('catalog version is confirmed against Supabase', online.verified === true && online.release.rulesetVersion === online.rules.rulesetVersion)
+  check('an unchanged catalog is not downloaded again', online.source !== 'supabase')
   const originalFetch = window.fetch
   window.fetch = async () => { throw Error('Simulated offline') }
   const offline = await loadCatalog()
-  check('offline uses cached version', offline.source === 'cached' && offline.release.rulesetVersion === online.release.rulesetVersion)
+  check('offline falls back to a validated copy', offline.verified === false && offline.release.rulesetVersion === online.release.rulesetVersion)
   localStorage.removeItem('wannaeat.catalog.v2')
   const freshOffline = await loadCatalog()
   check('first offline start uses bundle', freshOffline.source === 'bundle')

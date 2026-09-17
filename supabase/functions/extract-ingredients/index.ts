@@ -3,7 +3,12 @@
 const allowedMimeTypes = new Set(['image/jpeg', 'image/png', 'image/webp'])
 const maxBase64Length = Math.ceil(4 * 1024 * 1024 * 4 / 3) + 8
 const windows = new Map<string, number[]>()
-const models = ['gemini-3.6-flash', 'gemini-3-flash-preview', 'gemini-3.1-flash-lite-preview']
+// Flash-Lite reads Korean ingredient lists as well as the larger models here and costs the least.
+// The bigger models only stand by for the day Flash-Lite is unavailable.
+const models = ['gemini-3.1-flash-lite', 'gemini-3.5-flash-lite', 'gemini-3.6-flash']
+// Low resolution costs about a quarter of the default image tokens. Small print still reads,
+// so ask for it first and only look closer when the answer comes back empty.
+const resolutions = ['MEDIA_RESOLUTION_LOW', 'MEDIA_RESOLUTION_MEDIUM']
 
 function cors(request: Request) {
   const origin = request.headers.get('origin')
@@ -56,18 +61,26 @@ Deno.serve(async request => {
     const key = Deno.env.get('GEMINI_API_KEY')
     if (!key) return json(request, { message: '분석 서버가 아직 준비되지 않았어요.' }, 503)
     const prompt = '사진에서 제품의 원재료명 또는 원재료 표시 부분만 그대로 읽어라. 제품명, 영양성분, 광고 문구, 알레르기 안내, 추측한 성분은 포함하지 마라. 원재료를 읽을 수 없으면 readable을 false로 하고 ingredientText는 빈 문자열로 반환하라. 쉼표로 구분된 원문을 한 줄로 보존하라.'
-    const payload = JSON.stringify({
-      contents: [{ role: 'user', parts: [{ text: prompt }, { inline_data: { mime_type: image.mimeType, data: image.base64 } }] }],
-      generationConfig: { temperature: 0, responseMimeType: 'application/json', responseSchema: { type: 'OBJECT', properties: { readable: { type: 'BOOLEAN' }, ingredientText: { type: 'STRING' } }, required: ['readable', 'ingredientText'] } },
+    const ask = (model: string, mediaResolution: string) => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+      method: 'POST', headers: { 'x-goog-api-key': key, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ role: 'user', parts: [{ text: prompt }, { inline_data: { mime_type: image.mimeType, data: image.base64 } }] }],
+        generationConfig: { temperature: 0, mediaResolution, responseMimeType: 'application/json', responseSchema: { type: 'OBJECT', properties: { readable: { type: 'BOOLEAN' }, ingredientText: { type: 'STRING' } }, required: ['readable', 'ingredientText'] } },
+      }),
+      signal: AbortSignal.timeout(60_000),
     })
     // One model's daily quota running out must not take the feature down.
     let gemini: Response | undefined
+    let text: string | null = null
     for (const model of models) {
-      gemini = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-        method: 'POST', headers: { 'x-goog-api-key': key, 'Content-Type': 'application/json' },
-        body: payload, signal: AbortSignal.timeout(60_000),
-      })
-      if (gemini.ok || ![404, 429, 500, 503].includes(gemini.status)) break
+      for (const resolution of resolutions) {
+        gemini = await ask(model, resolution)
+        if (!gemini.ok) break
+        text = outputText(await gemini.json())
+        // 읽어내지 못했으면 한 번만 더 자세히 본다. 대부분은 첫 번째에서 끝난다.
+        if (text && (JSON.parse(text).ingredientText || '').trim()) break
+      }
+      if ((gemini?.ok && text) || ![404, 429, 500, 503].includes(gemini?.status ?? 0)) break
     }
     if (!gemini || !gemini.ok) {
       const status = gemini?.status
@@ -76,9 +89,8 @@ Deno.serve(async request => {
       if (status === 404) return json(request, { message: '사진 읽기 모델을 준비하고 있어요. 잠시 후 다시 시도해 주세요.' }, 503)
       return json(request, { message: '원재료 읽기 서비스가 응답하지 않았어요. 잠시 후 다시 시도해 주세요.' }, 502)
     }
-    const parsed = outputText(await gemini.json())
-    if (!parsed) return json(request, { message: '원재료를 읽지 못했어요. 원재료명 부분이 선명한 사진을 골라주세요.' }, 422)
-    const result = JSON.parse(parsed)
+    if (!text) return json(request, { message: '원재료를 읽지 못했어요. 원재료명 부분이 선명한 사진을 골라주세요.' }, 422)
+    const result = JSON.parse(text)
     if (!result || typeof result.readable !== 'boolean' || typeof result.ingredientText !== 'string' || result.ingredientText.length > 12_000) return json(request, { message: '원재료 읽기 결과가 올바르지 않아요.' }, 502)
     return json(request, { readable: result.readable, ingredientText: result.ingredientText.replace(/[\r\n]+/g, ' ').trim() })
   } catch (error) {
