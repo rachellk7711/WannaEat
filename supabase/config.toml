@@ -1,0 +1,4 @@
+project_id = "rnfhcwoqcrdoevabtjku"
+
+[functions.extract-ingredients]
+verify_jwt = false

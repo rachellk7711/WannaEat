@@ -9,6 +9,7 @@ const wait = async (condition) => { for (let n=0;n<160;n++) { if (condition()) r
 const doc = () => frame.contentDocument
 const button = label => doc().querySelector(`button[aria-label="${label}"]`)
 const textButton = text => [...doc().querySelectorAll('button')].find(b=>b.textContent.includes(text))
+const setValue = (element, value) => Object.getOwnPropertyDescriptor(element.ownerDocument.defaultView[element instanceof element.ownerDocument.defaultView.HTMLTextAreaElement ? 'HTMLTextAreaElement' : 'HTMLInputElement'].prototype, 'value').set.call(element, value)
 const render = async () => new Promise(r=>setTimeout(r,100))
 if (new URLSearchParams(location.search).get('run') !== 'isolated') {
   report.textContent = '테스트 전용 새 브라우저 프로필에서 ?run=isolated로 실행하세요. 해당 origin의 저장 자료를 비우는 테스트입니다.'
@@ -20,7 +21,7 @@ if (new URLSearchParams(location.search).get('run') !== 'isolated') {
   window.fetch = async () => { throw Error('Simulated offline') }
   const offline = await loadCatalog()
   check('offline uses cached version', offline.source === 'cached' && offline.release.rulesetVersion === online.release.rulesetVersion)
-  localStorage.removeItem('wannaeat.catalog.v1')
+  localStorage.removeItem('wannaeat.catalog.v2')
   const freshOffline = await loadCatalog()
   check('first offline start uses bundle', freshOffline.source === 'bundle')
   window.fetch = originalFetch
@@ -37,8 +38,7 @@ if (new URLSearchParams(location.search).get('run') !== 'isolated') {
   check('child removal preserves siblings', doc().querySelectorAll('.criterion-row.chosen').length === 6)
   button('밀 피해요').click(); await render()
   const search = doc().querySelector('input[type=search]')
-  const inputSetter = Object.getOwnPropertyDescriptor(frame.contentWindow.HTMLInputElement.prototype, 'value').set
-  inputSetter.call(search, '박력분'); search.dispatchEvent(new frame.contentWindow.Event('input',{bubbles:true})); await render()
+  setValue(search, '박력분'); search.dispatchEvent(new frame.contentWindow.Event('input',{bubbles:true})); await render()
   check('alias search narrows to wheat', doc().querySelectorAll('.criterion-row').length === 1 && !!button('밀 피해요'))
   textButton('기준 저장하기').click(); await wait(()=>doc().querySelector('.my-criteria'))
   const stored = JSON.parse(localStorage.getItem('wannaeat.criteria.v2'))
@@ -57,7 +57,14 @@ if (new URLSearchParams(location.search).get('run') !== 'isolated') {
     textButton('변경 취소').click(); await wait(()=>doc().querySelector('.my-criteria'))
   }
   textButton('라벨 확인하기').click(); await wait(()=>doc().querySelector('.photo-frame'))
-  check('photo remains an honest preview', doc().querySelector('.photo-note').textContent.includes('미리보기'))
+  check('photo upload explains processing', doc().querySelector('.photo-note').textContent.includes('분석 요청'))
+  localStorage.setItem('wannaeat.criteria.v2', JSON.stringify({ rulesetVersion: online.release.rulesetVersion, selections:[{kind:'criterion',id:'wheat',strength:'avoid'},{kind:'criterion',id:'sugar',strength:'inform'}] }))
+  frame.src = '/?check=result#review'; await wait(()=>doc().querySelector('#ingredient-text'))
+  const ingredients = doc().querySelector('#ingredient-text')
+  setValue(ingredients, '박력분, 무설탕, 복합조미식품'); ingredients.dispatchEvent(new frame.contentWindow.Event('input',{bubbles:true})); await render()
+  textButton('내 기준과 비교하기').click(); await wait(()=>doc().querySelector('.result-list'))
+  check('reviewed text reaches deterministic result', doc().querySelector('.result-list').textContent.includes('밀') && doc().querySelector('.result-list').textContent.includes('표기에 발견'))
+  check('opaque evidence is visible', doc().body.textContent.includes('묶음 표기'))
   localStorage.setItem('wannaeat.criteria.v2', JSON.stringify({ rulesetVersion:'old', selections:[{kind:'criterion',id:'removed_id',strength:'avoid'}] }))
   frame.src = '/?check=review#criteria'; await wait(()=>textButton('변경된 기준 확인하고 저장'))
   check('unknown selection and version require review', doc().body.textContent.includes('removed_id'))

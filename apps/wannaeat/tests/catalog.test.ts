@@ -2,8 +2,11 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { allCriteria, allSubgroups, chooseCriterion, chooseSubgroup, effectiveSelections, matchesSearch, parsePreferences, parseRelease, validSelection } from '../src/domain/catalog.ts'
+import ruleSnapshot from '../src/analysis-rules.snapshot.json' with { type: 'json' }
+import { analyzeIngredients, parseRuleSet } from '../src/domain/analysis.ts'
 
 const { catalog, rulesetVersion } = parseRelease(JSON.parse(readFileSync(new URL('../src/catalog.snapshot.json', import.meta.url), 'utf8')))
+const rules = parseRuleSet(ruleSnapshot)
 
 test('subgroup selections preserve child overrides and sibling choices when one is removed', () => {
   const subgroup = allSubgroups(catalog).find(sub => sub.id === 'grains')!
@@ -74,4 +77,21 @@ test('bad catalog references and duplicated IDs reject the whole release', () =>
   const broken = structuredClone(catalog)
   broken.groups[0].subgroups[0].criteria[0].includedIn = ['missing_id']
   assert.throws(() => parseRelease({ rulesetVersion, catalog: broken }))
+})
+
+test('deterministic label analysis respects direct, inferred, excluded and opaque evidence', () => {
+  const selected = new Map([['wheat', 'avoid'] as const, ['soy_oil', 'inform'] as const, ['sugar', 'avoid'] as const])
+  const result = analyzeIngredients('박력분, 식용유지(대두유), 복합조미식품, 무설탕', catalog, selected, rules)
+  const finding = (id: string) => result.findings.find(item => item.criterionId === id)!
+  assert.equal(finding('wheat').state, 'found')
+  assert.deepEqual(finding('wheat').tokens, ['박력분'])
+  assert.equal(finding('soy_oil').state, 'found')
+  assert.deepEqual(finding('soy_oil').tokens, ['대두유'])
+  assert.equal(finding('sugar').state, 'unreadable')
+  assert.deepEqual(result.opaqueTokens, ['복합조미식품'])
+})
+
+test('excluded lookalikes cannot create a wheat finding', () => {
+  const result = analyzeIngredients('메밀가루, 밀크향', catalog, new Map([['wheat', 'avoid'] as const]), rules)
+  assert.equal(result.findings[0].state, 'none')
 })

@@ -20,10 +20,11 @@ npm run build
 - 카탈로그의 분류 → 소분류 → 기준 구조, 표기 예시·제외 예시·설명·검색어 연결
 - 피해요(`avoid`) / 알려만줘요(`inform`) 두 단계. 사전 선택·식단 프리셋 없음
 - `selectAll: true`인 소분류만 전체 선택. 개별 변경·해제와 전체 선택의 충돌 처리
-- 실제 Supabase Storage에서 공개 카탈로그를 읽고 SHA-256 검증. 연결 실패 시 최근 검증본, 없으면 번들 사용
+- 실제 Supabase Storage에서 공개 카탈로그와 판정 규칙을 읽고 SHA-256 검증. 연결 실패 시 최근 검증본, 없으면 번들 사용
 - 토스에서는 `Storage` SDK, 일반 브라우저에서는 `localStorage`를 이용한 기기 내 기준 저장
-- 사진첩 선택·카메라 촬영과 이미지 미리보기. 서버 전송·영구 저장은 하지 않음
-- 이미지 자르기·전송 확인·OCR·서버 판정·토스 사용자 인증·분석 이력·결제는 아직 연결하지 않음
+- 사진첩 선택·카메라 촬영, 전송 동의, Edge Function의 원재료 텍스트 추출, 사용자 수정, 고정 규칙 대조와 결과 표시
+- 사진·읽은 텍스트·결과는 분석 이력으로 저장하지 않음. OCR은 인쇄된 원재료를 읽기만 하며 성분의 포함 여부를 추정하지 않음
+- 이미지 자르기·토스 사용자 인증·분석 이력·결제는 아직 연결하지 않음
 
 ## 사용자 기준 저장 계약
 
@@ -53,16 +54,27 @@ npm run build
 
 현재 프로젝트: `rnfhcwoqcrdoevabtjku`.
 
-현재는 **관계형 테이블을 만들지 않고** 공통 참조 자료를 Supabase Storage의 `wannaeat-reference` 공개 버킷으로 배포한다. 사진·사용자 기준은 이 버킷에 올리지 않는다. 모든 사용자가 동일한 약 78KB 카탈로그를 읽는 구조에 맞춘 선택이다. 데이터 수집·정리 원본은 로컬에 유지한다.
+현재는 **관계형 테이블을 만들지 않고** 공통 참조 자료를 Supabase Storage의 `wannaeat-reference` 공개 버킷으로 배포한다. 사진·사용자 기준은 이 버킷에 올리지 않는다. 모든 사용자가 동일한 카탈로그와 판정 규칙을 읽는 구조에 맞춘 선택이다. 데이터 수집·정리 원본은 로컬에 유지한다.
 
 1. `.env.example`을 이 앱 폴더의 `.env.local`로 복사하고 공개 키를 설정한다.
 2. 프로젝트 루트 `.env.local`에는 배포 스크립트용 `SUPABASE_URL`, `SUPABASE_SECRET_KEY`를 둔다. 시크릿 키에 `VITE_` 접두사를 붙이지 않는다.
-3. Claude의 데이터 정리가 끝난 시점에 `npm run catalog:sync`로 `data/prepared/criteria_catalog.json`을 검증·복사한다. 개발/빌드 중에는 원본을 자동으로 덮어쓰거나 다시 읽지 않는다.
+3. Claude의 데이터 정리가 끝난 시점에 `npm run catalog:sync`로 `data/prepared/criteria_catalog.json`, `criteria_rules.csv`, `opaque_terms.csv`를 함께 검증·복사한다. 개발/빌드 중에는 원본을 자동으로 덮어쓰거나 다시 읽지 않는다.
 4. `npm test`로 선택 계약을 확인한 뒤 `npm run catalog:publish`를 실행한다.
 
-배포 스크립트는 버전별 파일을 신규 업로드하고 공개 읽기 체크섬을 확인한 뒤 `catalogs/latest.json`의 버전 포인터를 바꾼다. 같은 버전에 다른 내용을 덮어쓰지 않는다. 원본 데이터를 가진 환경에서만 `catalog:sync`를 실행할 수 있다. Git clone만 한 환경은 포함된 스냅샷으로 실행·테스트·빌드할 수 있다.
+배포 스크립트는 버전별 카탈로그와 판정 규칙 파일을 신규 업로드하고 공개 읽기 체크섬을 확인한 뒤 `catalogs/latest.json`의 버전 포인터를 바꾼다. 같은 버전에 다른 내용을 덮어쓰지 않는다. 원본 데이터를 가진 환경에서만 `catalog:sync`를 실행할 수 있다. Git clone만 한 환경은 포함된 스냅샷으로 실행·테스트·빌드할 수 있다.
 
 Storage 공개 버킷은 읽기를 허용하지만, 쓰기·삭제에는 별도 권한이 적용된다. 쓰기용 공개 정책을 추가하지 않는다. [공식 접근 제어 문서](https://supabase.com/docs/guides/storage/security/access-control)
+
+### 원재료 추출 함수 배포
+
+함수 코드는 `supabase/functions/extract-ingredients/`에 있다. `supabase/config.toml`에서 JWT 검증을 끄는 대신 허용 출처·4MB 형식 제한·동일 실행 인스턴스 내 요청 제한을 적용한다. 토스 익명키 검증과 서버 단위 요청 제한을 붙이기 전의 초기 배포용 보호 장치다. 앱인토스 인증 연동 후에는 이 함수를 토스에서 검증한 세션으로 제한해야 한다.
+
+1. Supabase Dashboard의 Edge Functions Secrets에서 `GEMINI_API_KEY`를 설정하거나, `supabase/.env.example`을 `supabase/.env`로 복사해 값을 넣는다.
+2. `npx supabase login`으로 프로젝트 소유 계정에 로그인한다.
+3. 비밀 파일을 쓸 경우 `npx supabase secrets set --env-file supabase/.env --project-ref rnfhcwoqcrdoevabtjku`를 실행한다.
+4. 앱 폴더에서 `npm run functions:deploy`를 실행한다.
+
+`GEMINI_API_KEY`, Supabase secret key, 개인 토큰은 `VITE_` 접두사로 만들거나 커밋하지 않는다. 함수가 사진을 Storage나 Postgres에 저장하지 않으며, Gemini에는 요청 처리에 필요한 사진만 전달한다. 공급자 측 데이터 취급은 출시 전 사용하는 Gemini API 요금제의 약관으로 별도 검토한다.
 
 사용자 기준의 서버 저장은 검증된 토스 사용자 인증과 사용자별 RLS/서버 API를 설계한 뒤 구현한다. 공개 키나 클라이언트가 보낸 임의 사용자 ID만으로 개인 설정을 공유하지 않는다.
 

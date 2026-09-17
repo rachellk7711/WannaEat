@@ -4,8 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "catalog:sync": "node scripts/sync-catalog.mjs",
+    "catalog:sync": "python scripts/sync-analysis-assets.py",
     "catalog:publish": "node scripts/publish-catalog.mjs",
+    "functions:deploy": "npx supabase functions deploy extract-ingredients --project-ref rnfhcwoqcrdoevabtjku",
     "test": "node --test tests/*.test.ts",
     "dev": "vite",
     "build": "tsc -b && vite build && ait build",
