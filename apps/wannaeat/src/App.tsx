@@ -182,7 +182,7 @@ function App() {
             {review ? <p className="review-prompt">기준 목록이 바뀌었거나 다시 설정이 필요해요. 수정에서 확인해 주세요.</p> : <p>{selected.length ? <>피해요 <b>{avoid}</b> · 알려만줘요 <b>{selected.length - avoid}</b></> : '내가 확인할 원재료를 골라보세요.'}</p>}
             <div className="ingredient-chips">{selected.slice(0, 6).map(c => <button key={c.id} type="button" disabled={readFailed} onClick={() => go('criteria')}><span className={`chip-dot ${effective.get(c.id)}`} /><span>{c.name}</span><small>{strengthLabels[effective.get(c.id)!]}</small></button>)}<button className="chip-add" type="button" disabled={readFailed} onClick={() => go('criteria')} aria-label="기준 추가"><Icon name="plus" size={15} />{selected.length > 6 ? `외 ${selected.length - 6}개` : '기준 추가'}</button></div>
           </>}
-        </section><p className="brand-signoff"><Icon name="leaf" size={15} /> 안전한 식탁을 위한 나만의 첫걸음</p>
+        </section><p className="brand-signoff"><Icon name="leaf" size={15} /> 내 몸을 위한 선택, 타협하지 마세요.</p>
       </>}
       {page === 'criteria' && (!loaded ? <p className="empty" role="status">기준을 불러오고 있어요.</p> : readFailed ? <p className="empty">기준을 다시 불러온 뒤 설정할 수 있어요.</p> : <CriteriaEditor catalog={catalog} rows={draft} onChange={setDraft} busy={busy} onSave={() => void save()} review={review} onCancel={() => go('home')} />)}
       {page === 'image' && <>

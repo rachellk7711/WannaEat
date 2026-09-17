@@ -3,6 +3,7 @@
 const allowedMimeTypes = new Set(['image/jpeg', 'image/png', 'image/webp'])
 const maxBase64Length = Math.ceil(4 * 1024 * 1024 * 4 / 3) + 8
 const windows = new Map<string, number[]>()
+const models = ['gemini-3.6-flash', 'gemini-3-flash-preview', 'gemini-3.1-flash-lite-preview']
 
 function cors(request: Request) {
   const origin = request.headers.get('origin')
@@ -55,12 +56,26 @@ Deno.serve(async request => {
     const key = Deno.env.get('GEMINI_API_KEY')
     if (!key) return json(request, { message: '분석 서버가 아직 준비되지 않았어요.' }, 503)
     const prompt = '사진에서 제품의 원재료명 또는 원재료 표시 부분만 그대로 읽어라. 제품명, 영양성분, 광고 문구, 알레르기 안내, 추측한 성분은 포함하지 마라. 원재료를 읽을 수 없으면 readable을 false로 하고 ingredientText는 빈 문자열로 반환하라. 쉼표로 구분된 원문을 한 줄로 보존하라.'
-    const gemini = await fetch('https://generativelanguage.googleapis.com/v1beta/interactions', {
-      method: 'POST', headers: { 'x-goog-api-key': key, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'gemini-3.6-flash', input: [{ type: 'text', text: prompt }, { type: 'image', data: image.base64, mime_type: image.mimeType }], response_format: { type: 'text', mime_type: 'application/json', schema: { type: 'object', properties: { readable: { type: 'boolean' }, ingredientText: { type: 'string' } }, required: ['readable', 'ingredientText'] } } }),
-      signal: AbortSignal.timeout(60_000),
+    const payload = JSON.stringify({
+      contents: [{ role: 'user', parts: [{ text: prompt }, { inline_data: { mime_type: image.mimeType, data: image.base64 } }] }],
+      generationConfig: { temperature: 0, responseMimeType: 'application/json', responseSchema: { type: 'OBJECT', properties: { readable: { type: 'BOOLEAN' }, ingredientText: { type: 'STRING' } }, required: ['readable', 'ingredientText'] } },
     })
-    if (!gemini.ok) return json(request, { message: '원재료 읽기 서비스가 응답하지 않았어요. 잠시 후 다시 시도해 주세요.' }, 502)
+    // One model's daily quota running out must not take the feature down.
+    let gemini: Response | undefined
+    for (const model of models) {
+      gemini = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+        method: 'POST', headers: { 'x-goog-api-key': key, 'Content-Type': 'application/json' },
+        body: payload, signal: AbortSignal.timeout(60_000),
+      })
+      if (gemini.ok || ![404, 429, 500, 503].includes(gemini.status)) break
+    }
+    if (!gemini || !gemini.ok) {
+      const status = gemini?.status
+      if (status === 429) return json(request, { message: '오늘 사진 읽기 한도를 다 썼어요. 잠시 후 다시 시도해 주세요.' }, 429)
+      if (status === 401 || status === 403) return json(request, { message: '분석 서버 설정을 확인하고 있어요. 잠시 후 다시 시도해 주세요.' }, 503)
+      if (status === 404) return json(request, { message: '사진 읽기 모델을 준비하고 있어요. 잠시 후 다시 시도해 주세요.' }, 503)
+      return json(request, { message: '원재료 읽기 서비스가 응답하지 않았어요. 잠시 후 다시 시도해 주세요.' }, 502)
+    }
     const parsed = outputText(await gemini.json())
     if (!parsed) return json(request, { message: '원재료를 읽지 못했어요. 원재료명 부분이 선명한 사진을 골라주세요.' }, 422)
     const result = JSON.parse(parsed)

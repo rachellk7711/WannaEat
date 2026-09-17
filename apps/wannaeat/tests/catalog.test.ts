@@ -95,3 +95,19 @@ test('excluded lookalikes cannot create a wheat finding', () => {
   const result = analyzeIngredients('메밀가루, 밀크향', catalog, new Map([['wheat', 'avoid'] as const]), rules)
   assert.equal(result.findings[0].state, 'none')
 })
+
+test('text extracted from a real label photo produces the expected findings', () => {
+  // 실제 추출 결과(테스트 라벨 사진 → extract-ingredients 함수 응답)를 그대로 고정한다.
+  const label = '밀가루(밀:미국산), 백설탕, 가공유지(대두유, 팜유), 귀리후레이크 12%, 물엿, 전지분유(우유), 합성향료(버터향), 복합조미식품, 정제소금, 팽창제(탄산수소나트륨), 대두레시틴'
+  const ids = ['wheat', 'oat', 'sugar', 'soy_oil', 'palm_oil', 'dairy', 'processed_fat', 'animal_fat', 'beef']
+  const selected = new Map(ids.map(id => [id, 'avoid' as const]))
+  const result = analyzeIngredients(label, catalog, selected, rules)
+  const state = (id: string) => result.findings.find(finding => finding.criterionId === id)!.state
+  for (const id of ['wheat', 'oat', 'sugar', 'soy_oil', 'palm_oil', 'dairy']) assert.equal(state(id), 'found', id)
+  // 가공유지는 어떤 기름인지 표기로 알 수 없고, 향료 표기는 그 원재료가 들었다는 뜻이 아니다.
+  assert.equal(state('processed_fat'), 'needs_review')
+  assert.equal(state('animal_fat'), 'needs_review')
+  // 묶음 표기가 있으면 걸리지 않은 기준은 '없음' 이 아니라 '확인 불가' 다.
+  assert.equal(state('beef'), 'unreadable')
+  assert.deepEqual(result.opaqueTokens, ['합성향료(버터향)', '복합조미식품'])
+})
