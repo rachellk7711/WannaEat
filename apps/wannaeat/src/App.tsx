@@ -8,12 +8,15 @@ import { deviceStorage, isNative, LEGACY_KEY, PREFERENCES_KEY } from './lib/stor
 import { extractIngredients, imageForExtraction } from './lib/extract.ts'
 import type { CropArea } from './lib/extract.ts'
 import CropBox from './components/CropBox.tsx'
+import { addEntry, formatWhen, HISTORY_KEY, newId, parseHistory, summarize } from './domain/history.ts'
+import type { HistoryEntry } from './domain/history.ts'
 import CriteriaEditor from './components/CriteriaEditor.tsx'
 import { BrandMark, Icon, LabelArt } from './components/Brand.tsx'
 import './App.css'
 
-type Page = 'home' | 'criteria' | 'image' | 'review' | 'result'
-const readPage = (): Page => location.hash === '#criteria' ? 'criteria' : location.hash === '#image' ? 'image' : location.hash === '#review' ? 'review' : location.hash === '#result' ? 'result' : 'home'
+type Page = 'home' | 'criteria' | 'image' | 'review' | 'result' | 'history'
+const pages: Page[] = ['criteria', 'image', 'review', 'result', 'history']
+const readPage = (): Page => pages.find(page => location.hash === `#${page}`) ?? 'home'
 
 function App() {
   const [page, setPage] = useState<Page>(readPage)
@@ -37,6 +40,9 @@ function App() {
   const [ingredientText, setIngredientText] = useState('')
   const [analysisMessage, setAnalysisMessage] = useState('')
   const [analysis, setAnalysis] = useState<ReturnType<typeof analyzeIngredients> | null>(null)
+  const [history, setHistory] = useState<HistoryEntry[]>([])
+  const [historyMessage, setHistoryMessage] = useState('')
+  const [openEntry, setOpenEntry] = useState<string | null>(null)
   const fileInput = useRef<HTMLInputElement>(null)
   const cameraInput = useRef<HTMLInputElement>(null)
   const heading = useRef<HTMLDivElement>(null)
@@ -69,6 +75,17 @@ function App() {
       } finally { if (active) { setBusy(false); setLoaded(true) } }
     }
     void initialize()
+    return () => { active = false }
+  }, [])
+
+  useEffect(() => {
+    let active = true
+    deviceStorage.get(HISTORY_KEY).then(raw => {
+      if (!active || !raw) return
+      try { setHistory(parseHistory(JSON.parse(raw))) }
+      // 읽을 수 없는 이력은 조용히 덮어쓰지 않는다.
+      catch { setHistoryMessage('이 기기에 저장된 이력을 읽을 수 없어요. 지우고 다시 시작할 수 있어요.') }
+    }).catch(() => { if (active) setHistoryMessage('이 기기의 이력을 불러오지 못했어요.') })
     return () => { active = false }
   }, [])
 
@@ -122,9 +139,38 @@ function App() {
   function compareIngredients() {
     if (!ingredientText.trim()) { setAnalysisMessage('읽은 원재료를 입력해 주세요.'); return }
     if (release.rulesetVersion !== rules.rulesetVersion) { setAnalysisMessage('기준 목록과 판정 규칙의 버전이 맞지 않아요. 목록을 다시 불러온 뒤 시도해 주세요.'); return }
-    setAnalysis(analyzeIngredients(ingredientText, catalog, effective, rules))
+    const result = analyzeIngredients(ingredientText, catalog, effective, rules)
+    setAnalysis(result)
     setAnalysisMessage('')
+    // 이력은 기기에만 남긴다. 사진은 저장하지 않는다.
+    void storeHistory({
+      id: newId(), at: new Date().toISOString(), rulesetVersion: rules.rulesetVersion,
+      ingredientText, criteria: selected.map(item => ({ id: item.id, name: item.name, strength: effective.get(item.id)! })),
+      findings: result.findings, opaqueTokens: result.opaqueTokens,
+    })
     go('result')
+  }
+
+  async function storeHistory(entry: HistoryEntry) {
+    const next = addEntry(history, entry)
+    setHistory(next)
+    try { await deviceStorage.set(HISTORY_KEY, JSON.stringify(next)) }
+    catch { setHistoryMessage('이 기기에 이력을 저장하지 못했어요.') }
+  }
+
+  async function clearHistory() {
+    try {
+      await deviceStorage.remove(HISTORY_KEY)
+      setHistory([]); setHistoryMessage(''); setOpenEntry(null)
+    } catch { setHistoryMessage('이력을 지우지 못했어요. 다시 시도해 주세요.') }
+  }
+
+  async function removeEntry(id: string) {
+    const next = history.filter(item => item.id !== id)
+    setHistory(next)
+    if (openEntry === id) setOpenEntry(null)
+    try { await deviceStorage.set(HISTORY_KEY, JSON.stringify(next)) }
+    catch { setHistoryMessage('이력을 지우지 못했어요. 다시 시도해 주세요.') }
   }
 
   async function save() {
@@ -190,6 +236,7 @@ function App() {
         <section className="intro"><span className="eyebrow"><span className="tiny-dot" /> 나를 위한 식품 선택</span><h1>먹기 전에,<br />내 기준으로 한 번 더.</h1><p>길고 복잡한 라벨, 이제 사진 한 장으로 똑똑하게 걸러내요.</p></section>
         <section className="scan-card"><div className="scan-card-top"><span><Icon name="camera" size={16} /> 라벨로 확인</span><span>01</span></div><LabelArt /><h2>궁금한 제품이 있나요?</h2><p>원재료 표시를 사진으로 담아주세요.</p><button className="primary" type="button" onClick={() => go('image')}>라벨 확인하기 <Icon name="arrow" size={19} /></button></section>
         <button className="gallery-link" type="button" onClick={() => { go('image'); void pickImage() }}><Icon name="image" size={18} /> 사진첩에서 가져오기 <Icon name="arrow" size={16} /></button>
+        <button className="gallery-link" type="button" onClick={() => go('history')}><Icon name="sliders" size={18} /> 확인한 기록 {history.length ? `${history.length}건` : '보기'} <Icon name="arrow" size={16} /></button>
         <section className="my-criteria"><div className="section-line"><h2><Icon name="sliders" size={20} /> 내 기준</h2><button className="text-button" type="button" disabled={busy || readFailed} onClick={() => go('criteria')}>{selected.length ? '수정' : '설정하기'} <Icon name="arrow" size={15} /></button></div>
           {busy ? <p role="status">내 기준을 불러오고 있어요.</p> : <>
             {review ? <p className="review-prompt">기준 목록이 바뀌었거나 다시 설정이 필요해요. 수정에서 확인해 주세요.</p> : <p>{selected.length ? <>피해요 <b>{avoid}</b> · 알려만줘요 <b>{selected.length - avoid}</b></> : '내가 확인할 원재료를 골라보세요.'}</p>}
@@ -210,6 +257,42 @@ function App() {
         {analysisMessage && <p className="notice" role="status">{analysisMessage}</p>}
         <div className="photo-note"><strong>사진은 분석 요청에만 사용해요.</strong><p>결과를 신뢰하기 전에 읽은 원재료를 확인하고 필요하면 고쳐 주세요. 사진과 결과는 아직 분석 이력으로 저장하지 않아요.</p></div>
       </>}
+      {page === 'history' && <>
+        <section className="intro"><span className="eyebrow">MY RECORDS</span><h1>지금까지<br />확인한 기록이에요.</h1><p>이 기기에만 저장돼요. 사진은 저장하지 않고, 읽은 원재료와 그때의 내 기준만 남겨요.</p></section>
+        {historyMessage && <p className="notice" role="status">{historyMessage}</p>}
+        {history.length === 0 ? <section className="empty"><strong>아직 확인한 기록이 없어요.</strong><p>라벨을 확인하면 결과가 이 기기에 쌓여요.</p><button className="secondary" type="button" onClick={() => go('image')}>라벨 확인하기</button></section> : <>
+          <div className="history-list">{history.map(entry => {
+            const counts = summarize(entry)
+            const open = openEntry === entry.id
+            return <article className="history-row" key={entry.id}>
+              <button className="history-head" type="button" aria-expanded={open} onClick={() => setOpenEntry(open ? null : entry.id)}>
+                <span className="history-when">{formatWhen(entry.at)}</span>
+                <strong>{counts.found ? `발견 ${counts.found}` : '발견 없음'}{counts.needsReview ? ` · 확인 필요 ${counts.needsReview}` : ''}{counts.unreadable ? ` · 확인 불가 ${counts.unreadable}` : ''}</strong>
+                <span className="history-text">{entry.ingredientText}</span>
+              </button>
+              {open && <div className="history-detail">
+                <h3>그때의 내 기준</h3>
+                <p>{entry.criteria.length ? entry.criteria.map(item => `${item.name}(${strengthLabels[item.strength]})`).join(' · ') : '기준 없음'}</p>
+                <h3>결과</h3>
+                <ul>{entry.findings.map(finding => {
+                  const name = entry.criteria.find(item => item.id === finding.criterionId)?.name ?? finding.criterionId
+                  const label = finding.state === 'found' ? '표기에 발견' : finding.state === 'needs_review' ? '확인 필요' : finding.state === 'unreadable' ? '확인 불가' : '표기에 없음'
+                  return <li key={finding.criterionId}><b>{name}</b> — {label}{finding.tokens.length ? ` (${finding.tokens.join(' · ')})` : ''}</li>
+                })}</ul>
+                <h3>읽은 원재료</h3>
+                <p className="history-raw">{entry.ingredientText}</p>
+                <p className="history-version">판정 규칙 {entry.rulesetVersion}</p>
+                <div className="history-actions">
+                  <button className="secondary" type="button" onClick={() => { setIngredientText(entry.ingredientText); go('review') }}>이 원재료로 다시 확인하기</button>
+                  <button className="text-button" type="button" onClick={() => void removeEntry(entry.id)}>이 기록 지우기</button>
+                </div>
+              </div>}
+            </article>
+          })}</div>
+          <button className="text-button danger" type="button" onClick={() => void clearHistory()}>기록 모두 지우기</button>
+        </>}
+        {history.length === 0 && historyMessage && <button className="text-button danger" type="button" onClick={() => void clearHistory()}>저장된 이력 지우기</button>}
+      </>}
       {page === 'review' && <>
         <section className="intro"><span className="eyebrow">CHECK THE TEXT</span><h1>읽은 원재료를<br />한 번 확인해요.</h1><p>사진에서 읽은 내용이에요. 빠졌거나 잘못 읽은 부분은 고친 뒤 비교해 주세요.</p></section>
         <label className="ingredient-editor" htmlFor="ingredient-text"><span>원재료 표시</span><textarea id="ingredient-text" value={ingredientText} maxLength={12000} rows={10} onChange={event => setIngredientText(event.target.value)} placeholder="원재료명을 쉼표로 구분해 입력해 주세요." /></label>
@@ -226,7 +309,7 @@ function App() {
           return <article className={`result-row ${finding.state}`} key={finding.criterionId}><div><span className={`result-strength ${effective.get(finding.criterionId)}`}>{strengthLabels[effective.get(finding.criterionId)!]}</span><h2>{criterion?.name ?? finding.criterionId}</h2></div><strong>{state}</strong>{finding.tokens.length > 0 && <p>{finding.tokens.join(' · ')}</p>}{finding.state === 'unreadable' && <p>원재료 구성이 드러나지 않는 묶음 표기가 있어요.</p>}</article>
         })}</div>
         {analysis.opaqueTokens.length > 0 && <p className="notice">묶음 표기: {analysis.opaqueTokens.join(', ')}. 구체적인 원재료가 보이지 않아 선택한 기준별로 확인 불가로 표시될 수 있어요.</p>}
-        <div className="result-actions"><button className="primary" type="button" onClick={() => go('review')}>읽은 원재료 고치기</button><button className="secondary" type="button" onClick={() => go('image')}>다른 사진 확인하기</button><button className="text-button" type="button" onClick={() => go('home')}>처음으로</button></div>
+        <div className="result-actions"><button className="primary" type="button" onClick={() => go('review')}>읽은 원재료 고치기</button><button className="secondary" type="button" onClick={() => go('image')}>다른 사진 확인하기</button><button className="text-button" type="button" onClick={() => go('history')}>확인한 기록 보기</button></div>
         <p className="result-limit">이 결과는 제품의 성분 안전성, 알레르기, 함량 또는 건강 영향을 판단하지 않아요. 표기와 내 기준의 대조 결과예요.</p>
       </>}
     </div>

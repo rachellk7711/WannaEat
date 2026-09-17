@@ -12,6 +12,10 @@ export const deviceStorage = {
     if (isNative) await Storage.setItem(key, value)
     else window.localStorage.setItem(key, value)
   },
+  async remove(key: string): Promise<void> {
+    if (isNative) await Storage.removeItem(key)
+    else window.localStorage.removeItem(key)
+  },
 }
 
 export const PREFERENCES_KEY = 'wannaeat.criteria.v2'
