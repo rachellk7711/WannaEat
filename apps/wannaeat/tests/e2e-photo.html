@@ -63,13 +63,16 @@ if (new URLSearchParams(location.search).get('run') !== 'isolated') {
   const read = doc().querySelector('#ingredient-text').value
   check('읽은 원재료에 라벨 내용이 들어 있다', ['밀가루','백설탕','대두유','복합조미식품'].every(word => read.includes(word)), read)
 
-  textButton('내 기준과 비교하기').click(); await wait(()=>doc().querySelector('.result-list'))
-  const rows = [...doc().querySelectorAll('.result-row')].map(row => row.textContent)
-  const row = name => rows.find(text => text.includes(name)) ?? ''
-  check('밀을 발견으로 판정한다', row('밀').includes('표기에 발견'), row('밀'))
-  check('설탕을 발견으로 판정한다', row('설탕').includes('표기에 발견'), row('설탕'))
-  check('우유·유제품도 판정한다', row('우유').includes('표기에 발견'), row('우유'))
-  check('묶음 표기를 함께 알린다', doc().body.textContent.includes('복합조미식품'))
+  textButton('내 기준과 비교하기').click(); await wait(()=>doc().querySelector('.verdict'))
+  const hit = doc().querySelector('.result-block.hit')?.textContent ?? ''
+  const inform = doc().querySelector('.result-block.inform')?.textContent ?? ''
+  check('피해요로 고른 기준을 앞에 세운다', doc().querySelector('.verdict.hit')?.textContent.includes('2가지'), doc().querySelector('.verdict')?.textContent)
+  check('밀과 설탕을 피해요 칸에 묶는다', hit.includes('밀') && hit.includes('설탕') && hit.includes('밀가루'), hit)
+  check('알려만줘요는 따로 보여준다', inform.includes('우유'), inform)
+  check('속을 알 수 없는 표기를 늘 함께 알린다', doc().querySelector('.opaque-note')?.textContent.includes('복합조미식품'), doc().querySelector('.opaque-note')?.textContent)
+  const folds = [...doc().querySelectorAll('.result-fold summary')].map(s => s.textContent)
+  check('고른 기준이 모두 걸리면 없음 칸은 만들지 않는다', !folds.some(text => text.includes('표기에 없음')), folds.join(' | '))
+  check('읽은 원재료 원문은 접어서 둔다', folds.some(text => text.includes('읽은 원재료')), folds.join(' | '))
 
   textButton('확인한 기록 보기').click(); await wait(()=>doc().querySelector('.history-list'))
   check('결과가 기기에 남는다', doc().querySelectorAll('.history-row').length === 1)

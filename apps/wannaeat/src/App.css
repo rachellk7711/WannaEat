@@ -92,20 +92,6 @@
 .ingredient-editor > span { color: #40543f; font-weight: 700; font-size: 13px; }
 .ingredient-editor textarea { resize: vertical; width: 100%; min-height: 190px; padding: 14px; border: 1px solid #dce5d8; border-radius: 14px; background: #fbfcf9; color: #253d32; font-size: 14px; line-height: 1.8; }
 .back-step { display: flex; width: 100%; margin-top: 10px; }
-.result-summary { border-radius: 17px; padding: 18px; margin-bottom: 17px; background: var(--sage); }
-.result-summary strong { font-size: 16px; letter-spacing: -.4px; }
-.result-summary p { margin: 5px 0 0; color: #61745f; font-size: 12px; }
-.result-list { display: grid; gap: 10px; }
-.result-row { border: 1px solid #e0e7dc; border-left: 4px solid #a3b4a3; border-radius: 13px; padding: 14px; }
-.result-row.found { border-left-color: var(--green); background: #f5f9f1; }
-.result-row.needs_review, .result-row.unreadable { border-left-color: #c29f52; background: #fffbf0; }
-.result-row > div { display: flex; align-items: center; gap: 8px; }
-.result-row h2 { display: inline; margin: 0; font-size: 15px; }
-.result-row > strong { display: block; margin-top: 7px; color: #405440; font-size: 13px; }
-.result-row.needs_review > strong, .result-row.unreadable > strong { color: #846c2f; }
-.result-row p { margin: 5px 0 0; color: #697768; font-size: 12px; overflow-wrap: anywhere; }
-.result-strength { border-radius: 20px; padding: 2px 7px; background: #edf1ea; color: #647062; font-size: 10px; font-weight: 700; }
-.result-strength.avoid { background: var(--green); color: #fff; }
 .result-actions { display: grid; gap: 9px; margin-top: 20px; }
 .result-actions .text-button { margin: 0 auto; }
 .result-limit { margin: 21px 2px 0; color: #707c70; font-size: 11px; line-height: 1.7; word-break: keep-all; }
@@ -135,3 +121,27 @@
 .history-actions { display: grid; gap: 8px; margin-top: 14px; }
 .text-button.danger { display: flex; width: 100%; margin-top: 16px; color: #9a5b4f; }
 .remaining { margin: 10px 0 0; color: var(--muted); font-size: 12px; text-align: center; }
+
+.verdict { border-radius: 20px; padding: 22px 20px; margin-bottom: 18px; background: var(--sage); }
+.verdict.hit { background: #1e634d; color: #fff; }
+.verdict .eyebrow { display: block; margin-bottom: 9px; font-size: 11px; letter-spacing: .06em; opacity: .75; }
+.verdict h1 { margin: 0; font-size: 23px; line-height: 1.42; letter-spacing: -.6px; }
+.verdict.hit b { color: #ffe08a; }
+.verdict p { margin: 11px 0 0; font-size: 12.5px; line-height: 1.65; opacity: .82; word-break: keep-all; }
+.result-block { margin-bottom: 16px; }
+.result-block h2 { margin: 0 0 9px; font-size: 13px; letter-spacing: -.2px; color: #2f4738; }
+.result-block.review h2, .result-block.unknown h2 { color: #7a6528; }
+.block-why { margin: -4px 0 10px; color: var(--muted); font-size: 12px; line-height: 1.6; word-break: keep-all; }
+.finding { display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap; padding: 13px 15px; margin-bottom: 7px; border: 1px solid #e2e9dd; border-left: 4px solid #cfd9c9; border-radius: 13px; background: #fff; }
+.result-block.hit .finding { border-left-color: var(--green); background: #f4f9f0; }
+.result-block.inform .finding { border-left-color: #8fb39c; }
+.result-block.review .finding { border-left-color: #d8b45c; background: #fffbf1; }
+.finding h3 { margin: 0; font-size: 15px; letter-spacing: -.3px; }
+.finding p { margin: 0; color: #6d7b6c; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+.result-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.result-chips span { padding: 6px 11px; border-radius: 20px; background: #eef2ea; color: #5d6b5c; font-size: 12px; }
+.result-fold { margin-bottom: 12px; border-top: 1px solid #e8ece4; padding-top: 12px; }
+.result-fold summary { cursor: pointer; color: #5d6b5c; font-size: 13px; padding: 4px 0; }
+.result-fold[open] summary { margin-bottom: 10px; }
+.read-text { margin: 0; padding: 12px; border-radius: 12px; background: #f7f9f4; color: #56654f; font-size: 12px; line-height: 1.8; overflow-wrap: anywhere; }
+.opaque-note { margin: -6px 0 16px; padding: 12px 14px; border-radius: 12px; background: #fffbf1; color: #7a6528; font-size: 12px; line-height: 1.65; word-break: keep-all; }

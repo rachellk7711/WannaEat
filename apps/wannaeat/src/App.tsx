@@ -52,6 +52,16 @@ function App() {
   const effective = effectiveSelections(catalog, saved.selections)
   const selected = allCriteria(catalog).filter(c => effective.has(c.id))
   const avoid = [...effective.values()].filter(strength => strength === 'avoid').length
+  const named = (id: string) => allCriteria(catalog).find(item => item.id === id)?.name ?? id
+  // 결과는 걸린 것부터 보여준다. 고른 기준을 그대로 나열하면 정작 중요한 것이 묻힌다.
+  const shown = (state: string, strength?: string) => (analysis?.findings ?? [])
+    .filter(finding => finding.state === state && (!strength || effective.get(finding.criterionId) === strength))
+  const cards = (list: { criterionId: string; tokens: string[] }[]) => list.map(finding =>
+    <article className="finding" key={finding.criterionId}>
+      <h3>{named(finding.criterionId)}</h3>
+      {finding.tokens.length > 0 && <p>{finding.tokens.slice(0, 4).join(' · ')}{finding.tokens.length > 4 ? ` 외 ${finding.tokens.length - 4}개` : ''}</p>}
+    </article>)
+  const chips = (list: { criterionId: string }[]) => <div className="result-chips">{list.map(finding => <span key={finding.criterionId}>{named(finding.criterionId)}</span>)}</div>
 
   useEffect(() => {
     let active = true
@@ -344,14 +354,31 @@ function App() {
         <button className="text-button back-step" type="button" onClick={() => go('image')}>사진 다시 고르기</button>
       </>}
       {page === 'result' && analysis && <>
-        <section className="intro"><span className="eyebrow">YOUR RESULT</span><h1>내 기준으로<br />표시를 대조했어요.</h1><p>읽은 원재료 {analysis.tokens.length}개와 내가 고른 기준 {selected.length}개를 비교한 결과예요.</p></section>
-        <section className="result-summary"><strong>{analysis.findings.filter(finding => effective.get(finding.criterionId) === 'avoid' && finding.state === 'found').length ? '피해요 기준에서 표기를 찾았어요.' : '피해요 기준의 직접 표기는 찾지 못했어요.'}</strong><p>사진에서 읽은 글자와 고친 원재료를 기준으로 한 결과예요.</p></section>
-        <div className="result-list">{analysis.findings.map(finding => {
-          const criterion = allCriteria(catalog).find(item => item.id === finding.criterionId)
-          const state = finding.state === 'found' ? '표기에 발견' : finding.state === 'needs_review' ? '확인 필요' : finding.state === 'unreadable' ? '확인 불가' : '표기에 없음'
-          return <article className={`result-row ${finding.state}`} key={finding.criterionId}><div><span className={`result-strength ${effective.get(finding.criterionId)}`}>{strengthLabels[effective.get(finding.criterionId)!]}</span><h2>{criterion?.name ?? finding.criterionId}</h2></div><strong>{state}</strong>{finding.tokens.length > 0 && <p>{finding.tokens.join(' · ')}</p>}{finding.state === 'unreadable' && <p>원재료 구성이 드러나지 않는 묶음 표기가 있어요.</p>}</article>
-        })}</div>
-        {analysis.opaqueTokens.length > 0 && <p className="notice">묶음 표기: {analysis.opaqueTokens.join(', ')}. 구체적인 원재료가 보이지 않아 선택한 기준별로 확인 불가로 표시될 수 있어요.</p>}
+        <section className={`verdict ${shown('found', 'avoid').length ? 'hit' : 'clear'}`}>
+          <span className="eyebrow">내 기준 대조 결과</span>
+          {shown('found', 'avoid').length
+            ? <h1>피해요로 고른 <b>{shown('found', 'avoid').length}가지</b>가<br />표기에 있어요.</h1>
+            : <h1>피해요로 고른 기준은<br />표기에 없었어요.</h1>}
+          <p>{shown('unreadable').length > 0
+            ? `다만 무엇이 들었는지 알 수 없는 표기가 있어 ${shown('unreadable').length}가지는 확인할 수 없었어요.`
+            : '읽은 원재료 표기와 내 기준을 대조한 결과예요.'}</p>
+        </section>
+        {analysis.opaqueTokens.length > 0 && <p className="opaque-note">속을 알 수 없는 표기 {analysis.opaqueTokens.length}개가 함께 적혀 있어요 — {analysis.opaqueTokens.join(' · ')}. 그 안에 무엇이 들었는지는 라벨로 알 수 없어요.</p>}
+        {shown('found', 'avoid').length > 0 && <section className="result-block hit">
+          <h2>피해요 · 표기에서 찾았어요</h2>{cards(shown('found', 'avoid'))}</section>}
+        {shown('found', 'inform').length > 0 && <section className="result-block inform">
+          <h2>알려만줘요 · 표기에서 찾았어요</h2>{cards(shown('found', 'inform'))}</section>}
+        {shown('needs_review').length > 0 && <section className="result-block review">
+          <h2>확인 필요 {shown('needs_review').length}가지</h2>
+          <p className="block-why">이 표기만으로는 그 원재료가 들었는지 확정할 수 없어요.</p>
+          {cards(shown('needs_review'))}</section>}
+        {shown('unreadable').length > 0 && <section className="result-block unknown">
+          <h2>확인 불가 {shown('unreadable').length}가지</h2>
+          <p className="block-why">무엇이 들었는지 드러나지 않는 표기가 있어요 — {analysis.opaqueTokens.join(' · ')}</p>
+          {chips(shown('unreadable'))}</section>}
+        {shown('none').length > 0 && <details className="result-fold">
+          <summary>표기에 없음 {shown('none').length}가지</summary>{chips(shown('none'))}</details>}
+        <details className="result-fold"><summary>읽은 원재료 {analysis.tokens.length}개 보기</summary><p className="read-text">{ingredientText}</p></details>
         <div className="result-actions"><button className="primary" type="button" onClick={() => go('review')}>읽은 원재료 고치기</button><button className="secondary" type="button" onClick={() => go('image')}>다른 사진 확인하기</button><button className="text-button" type="button" onClick={() => go('history')}>확인한 기록 보기</button></div>
         <p className="result-limit">이 결과는 제품의 성분 안전성, 알레르기, 함량 또는 건강 영향을 판단하지 않아요. 표기와 내 기준의 대조 결과예요.</p>
       </>}
