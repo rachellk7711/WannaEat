@@ -33,7 +33,9 @@ function cors(request: Request) {
   const origin = request.headers.get('origin')
   try {
     const host = origin ? new URL(origin).hostname : ''
-    if (host === 'localhost' || host === '127.0.0.1' || host.endsWith('.toss.im')) return { 'Access-Control-Allow-Origin': origin!, Vary: 'Origin' }
+    // 사설 IP 는 같은 집 안의 휴대폰으로 시험할 때 쓴다. 바깥에서는 닿지 않는 주소다.
+    const lan = /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(host)
+    if (host === 'localhost' || host === '127.0.0.1' || lan || host.endsWith('.toss.im')) return { 'Access-Control-Allow-Origin': origin!, Vary: 'Origin' }
   } catch { /* The request is rejected below when CORS is needed. */ }
   return { Vary: 'Origin' }
 }

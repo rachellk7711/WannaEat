@@ -80,6 +80,25 @@ Storage 공개 버킷은 읽기를 허용하지만, 쓰기·삭제에는 별도 
 
 사용자 기준의 서버 저장은 검증된 토스 사용자 인증과 사용자별 RLS/서버 API를 설계한 뒤 구현한다. 공개 키나 클라이언트가 보낸 임의 사용자 ID만으로 개인 설정을 공유하지 않는다.
 
+## 휴대폰으로 시험하기
+
+```sh
+npm run dev:lan
+```
+
+같은 Wi-Fi 에서 터미널에 찍힌 `Network:` 주소(`http://192.168.x.x:5174`)를 휴대폰 브라우저로 연다.
+사설 IP(10.x · 192.168.x · 172.16~31.x)는 추출 함수가 허용한다. 바깥에서는 닿지 않는 주소다.
+
+열리지 않으면 **윈도우 방화벽**이다. 그 Wi-Fi 가 `공용` 으로 잡혀 있으면 Node.js 인바운드가 차단된다.
+관리자 PowerShell 에서 아래 중 하나를 쓴다. 시험이 끝나면 되돌린다.
+
+```powershell
+# 이 네트워크만 개인으로 (Get-NetConnectionProfile 로 InterfaceAlias 확인)
+Set-NetConnectionProfile -InterfaceAlias 'Wi-Fi' -NetworkCategory Private
+# 되돌리기
+Set-NetConnectionProfile -InterfaceAlias 'Wi-Fi' -NetworkCategory Public
+```
+
 ## 사용량 한도와 월 예산 (2026-09-18 결정)
 
 수익 없는 무료 서비스라 **월 예산이 상한**이다. 상한에 닿으면 사진 읽기를 닫고 다시 준비한다.
