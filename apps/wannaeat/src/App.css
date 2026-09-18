@@ -134,3 +134,4 @@
 .history-version { margin-top: 8px; color: #93a091; font-size: 11px; }
 .history-actions { display: grid; gap: 8px; margin-top: 14px; }
 .text-button.danger { display: flex; width: 100%; margin-top: 16px; color: #9a5b4f; }
+.remaining { margin: 10px 0 0; color: var(--muted); font-size: 12px; text-align: center; }
