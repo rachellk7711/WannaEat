@@ -145,3 +145,4 @@
 .result-fold[open] summary { margin-bottom: 10px; }
 .read-text { margin: 0; padding: 12px; border-radius: 12px; background: #f7f9f4; color: #56654f; font-size: 12px; line-height: 1.8; overflow-wrap: anywhere; }
 .opaque-note { margin: -6px 0 16px; padding: 12px 14px; border-radius: 12px; background: #fffbf1; color: #7a6528; font-size: 12px; line-height: 1.65; word-break: keep-all; }
+.none-note { margin: 4px 2px 16px; color: var(--muted); font-size: 12px; line-height: 1.65; word-break: keep-all; }

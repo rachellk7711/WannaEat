@@ -71,7 +71,7 @@ if (new URLSearchParams(location.search).get('run') !== 'isolated') {
   check('알려만줘요는 따로 보여준다', inform.includes('우유'), inform)
   check('속을 알 수 없는 표기를 늘 함께 알린다', doc().querySelector('.opaque-note')?.textContent.includes('복합조미식품'), doc().querySelector('.opaque-note')?.textContent)
   const folds = [...doc().querySelectorAll('.result-fold summary')].map(s => s.textContent)
-  check('고른 기준이 모두 걸리면 없음 칸은 만들지 않는다', !folds.some(text => text.includes('표기에 없음')), folds.join(' | '))
+  check('고른 기준이 모두 걸리면 없음 칸은 만들지 않는다', !folds.some(text => text.includes('발견 안 됨')), folds.join(' | '))
   check('읽은 원재료 원문은 접어서 둔다', folds.some(text => text.includes('읽은 원재료')), folds.join(' | '))
 
   textButton('확인한 기록 보기').click(); await wait(()=>doc().querySelector('.history-list'))

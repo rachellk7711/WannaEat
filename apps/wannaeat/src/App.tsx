@@ -329,7 +329,7 @@ function App() {
                 <h3>결과</h3>
                 <ul>{entry.findings.map(finding => {
                   const name = entry.criteria.find(item => item.id === finding.criterionId)?.name ?? finding.criterionId
-                  const label = finding.state === 'found' ? '표기에 발견' : finding.state === 'needs_review' ? '확인 필요' : finding.state === 'unreadable' ? '확인 불가' : '표기에 없음'
+                  const label = finding.state === 'found' ? '표기에서 발견' : finding.state === 'needs_review' ? '확인 필요' : finding.state === 'unreadable' ? '확인 불가' : '발견 안 됨'
                   return <li key={finding.criterionId}><b>{name}</b> — {label}{finding.tokens.length ? ` (${finding.tokens.join(' · ')})` : ''}</li>
                 })}</ul>
                 <h3>읽은 원재료</h3>
@@ -376,9 +376,8 @@ function App() {
           <h2>확인 불가 {shown('unreadable').length}가지</h2>
           <p className="block-why">무엇이 들었는지 드러나지 않는 표기가 있어요 — {analysis.opaqueTokens.join(' · ')}</p>
           {chips(shown('unreadable'))}</section>}
-        {shown('none').length > 0 && <details className="result-fold">
-          <summary>표기에 없음 {shown('none').length}가지</summary>{chips(shown('none'))}</details>}
         <details className="result-fold"><summary>읽은 원재료 {analysis.tokens.length}개 보기</summary><p className="read-text">{ingredientText}</p></details>
+        {shown('none').length > 0 && <p className="none-note">나머지 {shown('none').length}가지는 읽은 표기에서 발견되지 않았어요. 라벨에 적히지 않은 원료까지 확인할 수는 없어요.</p>}
         <div className="result-actions"><button className="primary" type="button" onClick={() => go('review')}>읽은 원재료 고치기</button><button className="secondary" type="button" onClick={() => go('image')}>다른 사진 확인하기</button><button className="text-button" type="button" onClick={() => go('history')}>확인한 기록 보기</button></div>
         <p className="result-limit">이 결과는 제품의 성분 안전성, 알레르기, 함량 또는 건강 영향을 판단하지 않아요. 표기와 내 기준의 대조 결과예요.</p>
       </>}

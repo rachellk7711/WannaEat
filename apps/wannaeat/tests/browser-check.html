@@ -89,7 +89,7 @@ if (new URLSearchParams(location.search).get('run') !== 'isolated') {
   await new Promise(resolve => { frame.addEventListener('load', resolve, {once:true}); frame.contentWindow.location.reload() }); await wait(()=>doc().querySelector('.history-list'))
   check('history survives a restart', doc().querySelectorAll('.history-row').length === 1)
   doc().querySelector('.history-head').click(); await wait(()=>doc().querySelector('.history-detail'))
-  check('history detail shows the criteria of that moment', doc().querySelector('.history-detail').textContent.includes('밀') && doc().querySelector('.history-detail').textContent.includes('표기에 발견'))
+  check('history detail shows the criteria of that moment', doc().querySelector('.history-detail').textContent.includes('밀') && doc().querySelector('.history-detail').textContent.includes('표기에서 발견'))
   textButton('기록 모두 지우기').click(); await wait(()=>!doc().querySelector('.history-list'))
   check('clearing history removes the stored rows', localStorage.getItem('wannaeat.history.v1') === null)
   localStorage.setItem('wannaeat.criteria.v2', JSON.stringify({ rulesetVersion:'old', selections:[{kind:'criterion',id:'removed_id',strength:'avoid'}] }))
