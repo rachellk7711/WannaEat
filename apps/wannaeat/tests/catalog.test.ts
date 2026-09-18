@@ -109,5 +109,5 @@ test('text extracted from a real label photo produces the expected findings', ()
   assert.equal(state('animal_fat'), 'needs_review')
   // 묶음 표기가 있으면 걸리지 않은 기준은 '없음' 이 아니라 '확인 불가' 다.
   assert.equal(state('beef'), 'unreadable')
-  assert.deepEqual(result.opaqueTokens, ['합성향료(버터향)', '복합조미식품'])
+  assert.deepEqual(result.opaqueTokens, ['합성향료', '복합조미식품'])
 })

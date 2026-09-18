@@ -64,11 +64,22 @@ export function splitIngredients(raw: string) {
   return result
 }
 
-function qualifiers(raw: string) {
-  const result: { parent: string; token: string }[] = []
-  for (const top of splitIngredients(raw)) for (const match of top.matchAll(/\(([^()]*)\)/g)) for (const part of match[1].split(/[,:]|또는/)) {
-    const token = normalizeIngredient(part)
-    if (token) result.push({ parent: normalizeIngredient(top), token })
+/** 라벨의 괄호 안은 복합원재료의 하위 원료다 — `전분(타피오카전분, 감자전분)`.
+ *  깊이에 상관없이 모두 원재료로 읽는다. 버리면 그 원료가 없는 것처럼 보인다. */
+function expand(raw: string, parent = '') {
+  const result: { parent: string; token: string; raw: string }[] = []
+  for (const item of splitIngredients(raw)) {
+    let outside = '', depth = 0, inner = '', start = 0
+    for (const char of item) {
+      if ('([{'.includes(char)) { depth += 1; if (depth === 1) { start = 1; continue } }
+      else if (')]}'.includes(char)) { depth -= 1; if (depth === 0) { inner += ','; continue } }
+      if (depth === 0) outside += char
+      else if (start) inner += char
+    }
+    // 원산지는 원료와 `/` `:` 로 붙어 나온다 — `외국산(미국)/어육살` · `밀:미국산`
+    const heads = outside.split(/[/·:]|또는/).map(piece => ({ raw: piece.trim(), token: normalizeIngredient(piece) })).filter(piece => piece.token)
+    for (const head of heads) result.push({ parent, ...head })
+    if (inner.trim()) result.push(...expand(inner, heads[0]?.token ?? parent))
   }
   return result
 }
@@ -103,12 +114,13 @@ function opaqueToken(token: string, rules: RuleSet) {
 }
 
 export function analyzeIngredients(raw: string, catalog: Catalog, selected: Map<string, Strength>, rules: RuleSet): Analysis {
-  const tokenSources = splitIngredients(raw).map(value => ({ source: value, token: normalizeIngredient(value) })).filter(item => item.token)
-  for (const qualifier of qualifiers(raw)) tokenSources.push({ source: qualifier.token, token: qualifier.token })
+  // 괄호 안 하위 원료까지 모두 읽는다. 부모가 향료 표기면 그 안은 추정으로만 본다.
+  const tokenSources = expand(raw).map(item => ({ source: item.raw || item.token, token: item.token, parent: item.parent }))
   const matches = new Map<string, { direct: { token: string; reason: string }[]; inferred: { token: string; reason: string }[] }>()
-  for (const { source, token } of tokenSources) for (const hit of findInToken(token, rules)) {
+  for (const { source, token, parent } of tokenSources) for (const hit of findInToken(token, rules)) {
     const item = matches.get(hit.criterionId) ?? { direct: [], inferred: [] }
-    item[hit.confidence === '직접' ? 'direct' : 'inferred'].push({ token: source, reason: hit.reason })
+    const confidence = hit.confidence === '직접' && isFlavor(parent) && !flavorCriteria.has(hit.criterionId) ? '추정' : hit.confidence
+    item[confidence === '직접' ? 'direct' : 'inferred'].push({ token: source, reason: hit.reason })
     matches.set(hit.criterionId, item)
   }
   const opaqueTokens = tokenSources.filter(item => opaqueToken(item.token, rules)).map(item => item.source)

@@ -6,9 +6,9 @@ const windows = new Map<string, number[]>()
 // Flash-Lite reads Korean ingredient lists as well as the larger models here and costs the least.
 // The bigger models only stand by for the day Flash-Lite is unavailable.
 const models = ['gemini-3.1-flash-lite', 'gemini-3.5-flash-lite', 'gemini-3.6-flash']
-// Low resolution costs about a quarter of the default image tokens. Small print still reads,
-// so ask for it first and only look closer when the answer comes back empty.
-const resolutions = ['MEDIA_RESOLUTION_LOW', 'MEDIA_RESOLUTION_MEDIUM']
+// 실제 라벨 사진(쇼핑 캡처)에서 LOW 는 `벌꿀분말` 을 `별첨분말` 로 잘못 읽었다. MEDIUM 은 제대로 읽는다.
+// 값은 한 장에 0.11원 더 드는 정도라, 거짓 안심을 막는 쪽을 택한다. 빈 답이 오면 기본 해상도로 한 번 더 본다.
+const resolutions: (string | undefined)[] = ['MEDIA_RESOLUTION_MEDIUM', undefined]
 // 무료로 배포하는 서비스라 월 예산이 상한이다. 상한에 닿으면 기능을 닫고 다시 준비한다(2026-09-18 결정).
 const DEVICE_DAILY_LIMIT = 10
 const MONTHLY_BUDGET_MICROS = 13_800_000 // 약 2만원 (환율 1,450원)
@@ -98,11 +98,11 @@ Deno.serve(async request => {
       return json(request, { message: '사진 읽기를 잠시 멈췄어요. 잠시 후 다시 시도해 주세요.' }, 503)
     }
     const prompt = '사진에서 제품의 원재료명 또는 원재료 표시 부분만 그대로 읽어라. 제품명, 영양성분, 광고 문구, 알레르기 안내, 추측한 성분은 포함하지 마라. 원재료를 읽을 수 없으면 readable을 false로 하고 ingredientText는 빈 문자열로 반환하라. 쉼표로 구분된 원문을 한 줄로 보존하라.'
-    const ask = (model: string, mediaResolution: string) => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+    const ask = (model: string, mediaResolution?: string) => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
       method: 'POST', headers: { 'x-goog-api-key': key, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ role: 'user', parts: [{ text: prompt }, { inline_data: { mime_type: image.mimeType, data: image.base64 } }] }],
-        generationConfig: { temperature: 0, mediaResolution, responseMimeType: 'application/json', responseSchema: { type: 'OBJECT', properties: { readable: { type: 'BOOLEAN' }, ingredientText: { type: 'STRING' } }, required: ['readable', 'ingredientText'] } },
+        generationConfig: { temperature: 0, ...(mediaResolution ? { mediaResolution } : {}), responseMimeType: 'application/json', responseSchema: { type: 'OBJECT', properties: { readable: { type: 'BOOLEAN' }, ingredientText: { type: 'STRING' } }, required: ['readable', 'ingredientText'] } },
       }),
       signal: AbortSignal.timeout(60_000),
     })

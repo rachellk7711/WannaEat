@@ -49,8 +49,8 @@ def main():
 
     print(f"{date.today():%Y-%m} 사용량 — 호출 {calls:,} · 입력 {inp:,} · 출력 {out:,} 토큰")
     print(f"예상 비용 {won:,.0f}원 / 상한 {BUDGET_MICROS/1e6*KRW:,.0f}원 ({micros/BUDGET_MICROS:.1%})")
-    # 남은 여유는 실측 기준 한 장(입력 354 · 출력 200 토큰)으로 환산한다.
-    per_photo = 354 * INPUT_PRICE_MICROS / 1e6 + 200 * OUTPUT_PRICE_MICROS / 1e6
+    # 남은 여유는 실측 기준 한 장(MEDIUM 해상도, 입력 634 · 출력 200 토큰)으로 환산한다.
+    per_photo = 634 * INPUT_PRICE_MICROS / 1e6 + 200 * OUTPUT_PRICE_MICROS / 1e6
     print(f"한 장당 {per_photo/1e6*KRW:.2f}원 기준 · 이번 달 {max(BUDGET_MICROS-micros,0)/per_photo:,.0f}장 더 가능")
     print()
     print(f"{'날짜':<12}{'호출':>8}{'입력':>10}{'출력':>9}{'비용(원)':>10}")
