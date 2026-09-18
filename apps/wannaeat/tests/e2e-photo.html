@@ -1,0 +1,80 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>WannaEat end-to-end</title></head><body>
+<pre id="report">RUNNING</pre><iframe id="app" style="width:390px;height:844px;border:0" title="테스트 앱"></iframe>
+<script type="module">
+// 사진 고르기부터 결과·이력까지 실제 화면과 실제 서버로 한 번에 통과시킨다.
+// 테스트 전용 새 브라우저 프로필에서 ?run=isolated 로만 실행한다.
+const report = document.querySelector('#report'), frame = document.querySelector('#app')
+const results = []
+const check = (name, condition, detail) => { results.push({ name, pass: !!condition, detail }); if (!condition) throw Error(name + (detail ? ` — ${detail}` : '')) }
+const wait = async (condition) => { for (let n=0;n<300;n++){ if (condition()) return; await new Promise(r=>setTimeout(r,100)) } throw Error('Timed out') }
+const doc = () => frame.contentDocument
+const textButton = text => [...doc().querySelectorAll('button')].find(b => b.textContent.includes(text))
+const render = () => new Promise(r=>setTimeout(r,120))
+if (new URLSearchParams(location.search).get('run') !== 'isolated') {
+  report.textContent = '테스트 전용 새 브라우저 프로필에서 ?run=isolated 로 실행하세요.'
+} else try {
+  localStorage.clear()
+  frame.src = '/#criteria'
+  await wait(()=>doc().querySelector('.criterion-row'))
+  for (const label of ['밀 피해요', '설탕 피해요', '우유·유제품 알려만줘요']) {
+    const button = doc().querySelector(`button[aria-label="${label}"]`)
+    check(`고를 수 있는 기준: ${label}`, !!button)
+    button.click(); await render()
+  }
+  textButton('기준 저장하기').click(); await wait(()=>doc().querySelector('.my-criteria'))
+
+  // 라벨 사진을 실제 파일로 고른다.
+  const blob = await (await fetch('/tests/label.jpg')).blob()
+  const file = new frame.contentWindow.File([blob], 'label.jpg', { type: 'image/jpeg' })
+  textButton('라벨 확인하기').click(); await wait(()=>doc().querySelector('.photo-frame'))
+  const input = doc().querySelector('input[type=file]:not([capture])')
+  const transfer = new frame.contentWindow.DataTransfer()
+  transfer.items.add(file)
+  input.files = transfer.files
+  input.dispatchEvent(new frame.contentWindow.Event('change', { bubbles: true }))
+  await wait(()=>doc().querySelector('.crop-frame img'))
+  check('고른 사진이 화면에 보인다', doc().querySelector('.crop-frame img').src.startsWith('blob:'))
+  const shown = doc().querySelector('.crop-frame img')
+  await wait(()=>shown.complete)
+  check('사진이 실제로 열린다', shown.naturalWidth > 0, `blob ${blob.size}B ${blob.type} · img ${shown.naturalWidth}x${shown.naturalHeight}`)
+
+  // 원재료명이 있는 아래쪽만 끌어서 고른다.
+  const box = doc().querySelector('.crop-frame').getBoundingClientRect()
+  const at = (x, y) => ({ clientX: box.left + box.width * x, clientY: box.top + box.height * y, pointerId: 1, bubbles: true })
+  const frameEl = doc().querySelector('.crop-frame')
+  frameEl.setPointerCapture = () => {}
+  frameEl.dispatchEvent(new frame.contentWindow.PointerEvent('pointerdown', at(0.02, 0.28)))
+  frameEl.dispatchEvent(new frame.contentWindow.PointerEvent('pointermove', at(0.98, 0.80)))
+  frameEl.dispatchEvent(new frame.contentWindow.PointerEvent('pointerup', at(0.98, 0.80)))
+  await render()
+  check('고른 영역이 표시된다', !!doc().querySelector('.crop-area'))
+
+  textButton('보낼 사진 확인하기').click(); await wait(()=>doc().querySelector('.send-preview'))
+  const preview = doc().querySelector('.send-preview')
+  check('보낼 그림을 전송 전에 보여준다', preview.src.startsWith('data:image/jpeg'), preview.src.slice(0, 60) + ' len=' + preview.src.length)
+  check('동의 전에는 읽기 버튼이 잠겨 있다', textButton('원재료 읽기').disabled)
+  doc().querySelector('.consent input').click(); await render()
+
+  const started = Date.now()
+  textButton('원재료 읽기').click()
+  await wait(()=>doc().querySelector('#ingredient-text') || doc().querySelector('.notice'))
+  const notice = doc().querySelector('.notice')
+  check('서버가 원재료를 읽어 돌려준다', !!doc().querySelector('#ingredient-text'), notice?.textContent)
+  const read = doc().querySelector('#ingredient-text').value
+  check('읽은 원재료에 라벨 내용이 들어 있다', ['밀가루','백설탕','대두유','복합조미식품'].every(word => read.includes(word)), read)
+
+  textButton('내 기준과 비교하기').click(); await wait(()=>doc().querySelector('.result-list'))
+  const rows = [...doc().querySelectorAll('.result-row')].map(row => row.textContent)
+  const row = name => rows.find(text => text.includes(name)) ?? ''
+  check('밀을 발견으로 판정한다', row('밀').includes('표기에 발견'), row('밀'))
+  check('설탕을 발견으로 판정한다', row('설탕').includes('표기에 발견'), row('설탕'))
+  check('우유·유제품도 판정한다', row('우유').includes('표기에 발견'), row('우유'))
+  check('묶음 표기를 함께 알린다', doc().body.textContent.includes('복합조미식품'))
+
+  textButton('확인한 기록 보기').click(); await wait(()=>doc().querySelector('.history-list'))
+  check('결과가 기기에 남는다', doc().querySelectorAll('.history-row').length === 1)
+  const stored = JSON.parse(localStorage.getItem('wannaeat.history.v1'))[0]
+  check('이력에 사진은 저장하지 않는다', !JSON.stringify(stored).includes('data:image'))
+  report.textContent = `PASS (${((Date.now()-started)/1000).toFixed(1)}초)\n읽은 원재료: ${read}\n` + JSON.stringify(results, null, 1)
+} catch (error) { report.textContent = 'FAIL ' + error.message + '\n' + JSON.stringify(results, null, 1) }
+</script></body></html>

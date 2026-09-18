@@ -31,6 +31,8 @@ function loadImage(uri: string) {
 /** 보낼 픽셀만 남긴다 — 자른 영역을 잘라내고, 긴 변을 1600px 로 줄여 JPEG 로 다시 그린다. */
 export async function imageForExtraction(uri: string, crop?: CropArea) {
   const image = await loadImage(uri)
+  // 아직 열리지 않은 사진으로 자르면 빈 그림이 만들어져 그대로 서버로 간다.
+  if (!image.naturalWidth || !image.naturalHeight) throw new Error('사진을 아직 여는 중이에요. 잠시 후 다시 눌러 주세요.')
   const area = crop ?? { x: 0, y: 0, width: 1, height: 1 }
   const sx = Math.round(area.x * image.naturalWidth), sy = Math.round(area.y * image.naturalHeight)
   const sw = Math.max(1, Math.round(area.width * image.naturalWidth)), sh = Math.max(1, Math.round(area.height * image.naturalHeight))
