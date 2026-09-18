@@ -5,7 +5,7 @@ import type { Preferences, Selection } from './domain/catalog.ts'
 import { analyzeIngredients } from './domain/analysis.ts'
 import { bundledRelease, bundledRules, loadCatalog } from './lib/catalog-loader.ts'
 import { deviceId, deviceStorage, isNative, LEGACY_KEY, PREFERENCES_KEY, READS_KEY } from './lib/storage.ts'
-import { extractIngredients, imageForExtraction, imageKey } from './lib/extract.ts'
+import { extractIngredients, imageForExtraction, imageKey, rotateImage } from './lib/extract.ts'
 import type { CropArea } from './lib/extract.ts'
 import CropBox from './components/CropBox.tsx'
 import { addEntry, formatWhen, HISTORY_KEY, newId, parseHistory, summarize } from './domain/history.ts'
@@ -243,6 +243,16 @@ function App() {
     } finally { setImageBusy(false) }
   }
 
+  async function turnPhoto() {
+    if (!imageUri || extractBusy) return
+    try {
+      const turned = await rotateImage(imageUri)
+      if (imageUri.startsWith('blob:')) URL.revokeObjectURL(imageUri)
+      setImageUri(turned)
+      setCrop(null); setPending(null); setConsented(false)
+    } catch (error) { setImageMessage(error instanceof Error ? error.message : '사진을 돌리지 못했어요.') }
+  }
+
   function setPhoto(uri: string | null) {
     setImageMessage('')
     setAnalysisMessage('')
@@ -282,10 +292,10 @@ function App() {
         {imageUri
           ? <CropBox src={imageUri} area={crop} onChange={area => { setCrop(area); setPending(null); setConsented(false) }} onError={() => { setImageUri(null); setImageMessage('표시할 수 없는 사진이에요. JPG 또는 PNG로 다시 골라주세요.') }} />
           : <div className="photo-frame"><LabelArt /><span>원재료명 영역을 담아주세요</span></div>}
-        <div className="image-actions"><button className="primary" type="button" disabled={imageBusy || extractBusy} onClick={() => void pickImage()}><Icon name="image" size={20} />{imageBusy ? '사진을 불러오는 중…' : imageUri ? '다른 사진 고르기' : '사진 선택하기'}</button><button className="secondary" type="button" disabled={imageBusy || extractBusy} onClick={() => void pickImage(true)}><Icon name="camera" size={20} /> 직접 촬영하기</button>{imageUri && <button className="text-button" type="button" onClick={() => setPhoto(null)}>사진 지우기</button>}</div>
+        <div className="image-actions"><button className="primary" type="button" disabled={imageBusy || extractBusy} onClick={() => void pickImage()}><Icon name="image" size={20} />{imageBusy ? '사진을 불러오는 중…' : imageUri ? '다른 사진 고르기' : '사진 선택하기'}</button><button className="secondary" type="button" disabled={imageBusy || extractBusy} onClick={() => void pickImage(true)}><Icon name="camera" size={20} /> 직접 촬영하기</button>{imageUri && <button className="secondary" type="button" disabled={extractBusy} onClick={() => void turnPhoto()}><Icon name="arrow" size={18} /> 사진 돌리기</button>}{imageUri && <button className="text-button" type="button" onClick={() => setPhoto(null)}>사진 지우기</button>}</div>
         {imageMessage && <p className="notice" role="status">{imageMessage}</p>}
         {closed && <p className="notice" role="status">이번 달 무료 분석이 모두 끝났어요. 다음 달에 다시 열려요. 그때까지도 이미 확인한 기록은 볼 수 있어요.</p>}
-        {imageUri && !pending && <section className="extract-card"><h2>보낼 부분 고르기</h2><p>{crop ? '고른 영역만 보내요. 다시 끌면 영역을 바꿀 수 있어요.' : '원재료명 부분을 끌어서 고르면 그 부분만 보내요. 고르지 않으면 사진 전체를 보내요.'}</p><button className="primary" type="button" onClick={() => void preparePhoto()}>보낼 사진 확인하기 <Icon name="arrow" size={19} /></button></section>}
+        {imageUri && !pending && <section className="extract-card"><h2>보낼 부분 고르기</h2><p>{crop ? '고른 영역만 보내요. 다시 끌면 영역을 바꿀 수 있어요.' : '원재료명 부분을 끌어서 고르면 그 부분만 보내요. 글자가 똑바로 보이게 돌려서 크게 잡을수록 잘 읽어요.'}</p><button className="primary" type="button" onClick={() => void preparePhoto()}>보낼 사진 확인하기 <Icon name="arrow" size={19} /></button></section>}
         {pending && <section className="extract-card"><h2>이 부분만 보내요</h2><img className="send-preview" src={pending.preview} alt="분석 서버로 보낼 사진" /><p>이 그림에 보이는 부분만 분석 서버로 전송해요. 이름·주소·주문번호가 보이면 영역을 다시 골라주세요. 서버는 사진을 저장하지 않고, 읽은 텍스트는 다음 화면에서 직접 고칠 수 있어요.</p><label className="consent"><input type="checkbox" checked={consented} disabled={extractBusy} onChange={event => setConsented(event.target.checked)} /><span>이 사진을 보내 원재료 텍스트를 읽는 데 동의해요.</span></label><button className="primary" type="button" disabled={!consented || extractBusy || closed} onClick={() => void readPhoto()}>{extractBusy ? '원재료를 읽는 중…' : '원재료 읽기'}</button>{remaining !== null && <p className="remaining">오늘 남은 확인 {remaining}장</p>}<button className="text-button" type="button" disabled={extractBusy} onClick={() => { setPending(null); setConsented(false) }}>영역 다시 고르기</button></section>}
         {analysisMessage && <p className="notice" role="status">{analysisMessage}</p>}
         <div className="photo-note"><strong>사진은 분석 요청에만 사용해요.</strong><p>결과를 신뢰하기 전에 읽은 원재료를 확인하고 필요하면 고쳐 주세요. 사진과 결과는 아직 분석 이력으로 저장하지 않아요.</p></div>

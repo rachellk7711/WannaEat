@@ -28,6 +28,22 @@ function loadImage(uri: string) {
   })
 }
 
+/** 사진을 시계 방향으로 한 번 돌린다. 옆으로 누운 사진은 글자 판독이 크게 떨어진다. */
+export async function rotateImage(uri: string) {
+  const image = await loadImage(uri)
+  if (!image.naturalWidth || !image.naturalHeight) throw new Error('사진을 아직 여는 중이에요. 잠시 후 다시 눌러 주세요.')
+  const scale = Math.min(1, 2400 / Math.max(image.naturalWidth, image.naturalHeight))
+  const width = Math.round(image.naturalWidth * scale), height = Math.round(image.naturalHeight * scale)
+  const canvas = document.createElement('canvas')
+  canvas.width = height; canvas.height = width
+  const context = canvas.getContext('2d')
+  if (!context) throw new Error('사진을 돌리지 못했어요. 다시 시도해 주세요.')
+  context.translate(height, 0)
+  context.rotate(Math.PI / 2)
+  context.drawImage(image, 0, 0, width, height)
+  return canvas.toDataURL('image/jpeg', 0.9)
+}
+
 /** 보낼 픽셀만 남긴다 — 자른 영역을 잘라내고, 긴 변을 1600px 로 줄여 JPEG 로 다시 그린다. */
 export async function imageForExtraction(uri: string, crop?: CropArea) {
   const image = await loadImage(uri)

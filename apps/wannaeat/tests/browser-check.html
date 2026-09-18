@@ -2,7 +2,7 @@
 <pre id="report">RUNNING</pre><iframe id="app" style="width:390px;height:844px;border:0" title="테스트 앱"></iframe>
 <script type="module">
 import { loadCatalog } from '/src/lib/catalog-loader.ts'
-import { imageForExtraction } from '/src/lib/extract.ts'
+import { imageForExtraction, rotateImage } from '/src/lib/extract.ts'
 const report = document.querySelector('#report'), frame = document.querySelector('#app')
 const results = []
 const check = (name, condition) => { results.push({ name, pass: !!condition }); if (!condition) throw Error(name) }
@@ -24,6 +24,9 @@ if (new URLSearchParams(location.search).get('run') !== 'isolated') {
   check('only the chosen area is prepared as jpeg', prepared.mimeType === 'image/jpeg' && prepared.preview.startsWith('data:image/jpeg') && !/^data:image\/png/.test(prepared.preview))
   const preparedSize = await new Promise(resolve => { const image = new Image(); image.onload = () => resolve([image.naturalWidth, image.naturalHeight]); image.src = prepared.preview })
   check('crop keeps its own pixels and stays under 1600px', preparedSize[0] === 1000 && preparedSize[1] === 480)
+  const turned = await rotateImage(source.toDataURL('image/png'))
+  const turnedSize = await new Promise(resolve => { const image = new Image(); image.onload = () => resolve([image.naturalWidth, image.naturalHeight]); image.src = turned })
+  check('a sideways photo can be turned upright', turnedSize[0] === 1200 && turnedSize[1] === 2000)
   const whole = await imageForExtraction(source.toDataURL('image/png'))
   const wholeSize = await new Promise(resolve => { const image = new Image(); image.onload = () => resolve([image.naturalWidth, image.naturalHeight]); image.src = whole.preview })
   check('full photo is resized down to 1600px', wholeSize[0] === 1600 && wholeSize[1] === 960)

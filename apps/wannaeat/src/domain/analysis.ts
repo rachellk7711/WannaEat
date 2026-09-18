@@ -43,7 +43,10 @@ function stripTrailingNumber(value: string) {
   const match = value.match(/\d+(\.\d+)?%?$/)
   if (!match) return value
   const number = match[0], head = value.slice(0, -number.length)
-  if (number.endsWith('%') || number.includes('.') || (head && /[A-Za-z]$/.test(head)) || head.endsWith('폴리소르베이트')) return value
+  // 라벨에는 함량이 붙는다 — `밀 24%` 는 `밀` 이다. 퍼센트와 소수는 뗀다.
+  if (number.endsWith('%') || number.includes('.')) return head
+  // 영문자 뒤 숫자와 폴리소르베이트 번호는 이름의 일부다 — `비타민B12` · `폴리소르베이트80`.
+  if ((head && /[A-Za-z]$/.test(head)) || head.endsWith('폴리소르베이트')) return value
   return head
 }
 
