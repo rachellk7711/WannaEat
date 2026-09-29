@@ -29,13 +29,17 @@ function usage(path: string, body: Record<string, unknown>) {
   })
 }
 
+// 휴대폰 시험용 웹 미리보기. *.vercel.app 전체를 열면 누구나 자기 사이트에서 이 함수를 부를 수 있어
+// 우리 배포 주소 하나만 정확히 허용한다.
+const previewOrigins = new Set(['https://wanna-eat-three.vercel.app'])
+
 function cors(request: Request) {
   const origin = request.headers.get('origin')
   try {
     const host = origin ? new URL(origin).hostname : ''
     // 사설 IP 는 같은 집 안의 휴대폰으로 시험할 때 쓴다. 바깥에서는 닿지 않는 주소다.
     const lan = /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(host)
-    if (host === 'localhost' || host === '127.0.0.1' || lan || host.endsWith('.toss.im')) return { 'Access-Control-Allow-Origin': origin!, Vary: 'Origin' }
+    if (host === 'localhost' || host === '127.0.0.1' || lan || host.endsWith('.toss.im') || previewOrigins.has(origin!)) return { 'Access-Control-Allow-Origin': origin!, Vary: 'Origin' }
   } catch { /* The request is rejected below when CORS is needed. */ }
   return { Vary: 'Origin' }
 }
