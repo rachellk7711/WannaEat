@@ -4,7 +4,7 @@ export type Selection = { kind: 'criterion' | 'subgroup'; id: string; strength: 
 export type Preferences = { rulesetVersion: string; selections: Selection[] }
 export type Criterion = {
   id: string; name: string; examples: string[]; notMatched: string[]; aliases: string[]
-  productsFound: number; includedIn?: string[]; note?: string
+  productsFound: number; includedIn?: string[]; note?: string; what?: string
 }
 export type Subgroup = { id: string; name: string; selectAll: boolean; criteria: Criterion[] }
 export type Catalog = { version: string; groups: { name: string; subgroups: Subgroup[] }[] }
@@ -25,7 +25,7 @@ export function parseCatalog(value: unknown): Catalog {
       if (!record(sub) || !validId(sub.id) || subgroupIds.has(sub.id) || !nonempty(sub.name) || typeof sub.selectAll !== 'boolean' || !Array.isArray(sub.criteria) || !sub.criteria.length) throw new Error('소분류 형식 오류')
       subgroupIds.add(sub.id)
       for (const c of sub.criteria) {
-        if (!record(c) || !validId(c.id) || ids.has(c.id) || !nonempty(c.name) || !strings(c.examples) || !strings(c.notMatched) || !strings(c.aliases) || typeof c.productsFound !== 'number' || !Number.isFinite(c.productsFound) || c.productsFound < 0 || (c.note !== undefined && typeof c.note !== 'string') || (c.includedIn !== undefined && !strings(c.includedIn))) throw new Error('기준 형식 오류')
+        if (!record(c) || !validId(c.id) || ids.has(c.id) || !nonempty(c.name) || !strings(c.examples) || !strings(c.notMatched) || !strings(c.aliases) || typeof c.productsFound !== 'number' || !Number.isFinite(c.productsFound) || c.productsFound < 0 || (c.note !== undefined && typeof c.note !== 'string') || (c.what !== undefined && typeof c.what !== 'string') || (c.includedIn !== undefined && !strings(c.includedIn))) throw new Error('기준 형식 오류')
         ids.add(c.id)
         relationships.push(...(c.includedIn as string[] | undefined ?? []))
       }

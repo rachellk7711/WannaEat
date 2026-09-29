@@ -55,6 +55,8 @@ export async function loadCatalog(): Promise<CatalogResult> {
     const current = (candidate: CatalogResult) => candidate.release.rulesetVersion === manifest.rulesetVersion && candidate.rules.rulesetVersion === manifest.rulesetVersion
     if (current(fallback)) return { ...fallback, verified: true }
     if (bundledRelease.rulesetVersion === manifest.rulesetVersion) return { release: bundledRelease, rules: bundledRules, source: 'bundle' as const, verified: true }
+    // 내려받은 파일은 반드시 확인하고 쓴다. 확인할 수 없으면 이미 검증된 사본을 쓴다.
+    if (!globalThis.crypto?.subtle) throw new Error('checksum needs a secure context')
     const fetchAsset = async (path: string, checksum: string, label: string) => {
       const file = await fetch(new URL(`${prefix}${path}`, base), options)
       if (!file.ok) throw new Error(`${label} HTTP ${file.status}`)

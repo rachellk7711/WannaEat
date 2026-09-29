@@ -6,8 +6,19 @@ export type ExtractedIngredients = { ingredientText: string; readable: boolean; 
 
 /** 같은 사진을 다시 보내지 않으려고 쓰는 값. 사진 자체는 어디에도 남지 않는다. */
 export async function imageKey(base64: string) {
-  const bytes = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(base64)))
-  return [...bytes].map(byte => byte.toString(16).padStart(2, '0')).join('').slice(0, 32)
+  // crypto.subtle 은 https·localhost 에서만 있다. 집 Wi-Fi 의 IP 로 열면 없다.
+  // 같은 사진인지 알아보는 용도뿐이라, 없으면 간단한 해시로 대신한다.
+  const subtle = globalThis.crypto?.subtle
+  if (subtle) {
+    const bytes = new Uint8Array(await subtle.digest('SHA-256', new TextEncoder().encode(base64)))
+    return [...bytes].map(byte => byte.toString(16).padStart(2, '0')).join('').slice(0, 32)
+  }
+  let hash = 0x811c9dc5
+  for (let index = 0; index < base64.length; index += 1) {
+    hash ^= base64.charCodeAt(index)
+    hash = Math.imul(hash, 0x01000193)
+  }
+  return `plain-${base64.length.toString(16)}-${(hash >>> 0).toString(16)}`
 }
 
 function publicKey(key: string) {

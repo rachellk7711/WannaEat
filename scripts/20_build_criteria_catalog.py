@@ -83,6 +83,9 @@ def main():
             item["includedIn"] = included[cid]
         if r["비고"]:
             item["note"] = r["비고"]
+        # 화면에서 "이게 뭔가요" 를 바로 보여준다. 몸에 좋다·나쁘다는 적지 않는다.
+        if r.get("설명"):
+            item["what"] = r["설명"]
         sg["criteria"].append(item)
 
     out = {"version": RULESET_VERSION,
