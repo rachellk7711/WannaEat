@@ -13,7 +13,8 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "deploy": "ait deploy",
-    "dev:lan": "vite --host 0.0.0.0 --port 5174"
+    "dev:lan": "vite --host 0.0.0.0 --port 5174",
+    "build:web": "tsc -b && vite build"
   },
   "dependencies": {
     "@apps-in-toss/web-framework": "^3.4.1",
