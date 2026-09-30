@@ -52,7 +52,7 @@ export function newId() {
 
 export function summarize(entry: HistoryEntry) {
   const count = (state: Finding['state']) => entry.findings.filter(finding => finding.state === state).length
-  return { found: count('found'), needsReview: count('needs_review'), unreadable: count('unreadable') }
+  return { found: count('found'), needsReview: count('needs_review') }
 }
 
 export function formatWhen(at: string) {

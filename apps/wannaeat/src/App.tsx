@@ -61,7 +61,6 @@ function App() {
       <h3>{named(finding.criterionId)}</h3>
       {finding.tokens.length > 0 && <p>{finding.tokens.slice(0, 4).join(' · ')}{finding.tokens.length > 4 ? ` 외 ${finding.tokens.length - 4}개` : ''}</p>}
     </article>)
-  const chips = (list: { criterionId: string }[]) => <div className="result-chips">{list.map(finding => <span key={finding.criterionId}>{named(finding.criterionId)}</span>)}</div>
 
   useEffect(() => {
     let active = true
@@ -346,7 +345,7 @@ function App() {
             return <article className="history-row" key={entry.id}>
               <button className="history-head" type="button" aria-expanded={open} onClick={() => setOpenEntry(open ? null : entry.id)}>
                 <span className="history-when">{formatWhen(entry.at)}</span>
-                <strong>{counts.found ? `발견 ${counts.found}` : '발견 없음'}{counts.needsReview ? ` · 확인 필요 ${counts.needsReview}` : ''}{counts.unreadable ? ` · 확인 불가 ${counts.unreadable}` : ''}</strong>
+                <strong>{counts.found ? `발견 ${counts.found}` : '발견 없음'}{counts.needsReview ? ` · 확인 필요 ${counts.needsReview}` : ''}</strong>
                 <span className="history-text">{entry.ingredientText}</span>
               </button>
               {open && <div className="history-detail">
@@ -355,7 +354,7 @@ function App() {
                 <h3>결과</h3>
                 <ul>{entry.findings.map(finding => {
                   const name = entry.criteria.find(item => item.id === finding.criterionId)?.name ?? finding.criterionId
-                  const label = finding.state === 'found' ? '표기에서 발견' : finding.state === 'needs_review' ? '확인 필요' : finding.state === 'unreadable' ? '확인 불가' : '발견 안 됨'
+                  const label = finding.state === 'found' ? '표기에서 발견' : finding.state === 'needs_review' ? '확인 필요' : '발견 안 됨'
                   return <li key={finding.criterionId}><b>{name}</b> — {label}{finding.tokens.length ? ` (${finding.tokens.join(' · ')})` : ''}</li>
                 })}</ul>
                 <h3>읽은 원재료</h3>
@@ -385,11 +384,8 @@ function App() {
           {shown('found', 'avoid').length
             ? <h1>피해요로 고른 <b>{shown('found', 'avoid').length}가지</b>가<br />표기에 있어요.</h1>
             : <h1>피해요로 고른 기준은<br />표기에 없었어요.</h1>}
-          <p>{shown('unreadable').length > 0
-            ? `다만 무엇이 들었는지 알 수 없는 표기가 있어 ${shown('unreadable').length}가지는 확인할 수 없었어요.`
-            : '읽은 원재료 표기와 내 기준을 대조한 결과예요.'}</p>
+          <p>읽은 원재료 표기와 내 기준을 대조한 결과예요.</p>
         </section>
-        {analysis.opaqueTokens.length > 0 && <p className="opaque-note">속을 알 수 없는 표기 {analysis.opaqueTokens.length}개가 함께 적혀 있어요 — {analysis.opaqueTokens.join(' · ')}. 그 안에 무엇이 들었는지는 라벨로 알 수 없어요.</p>}
         {shown('found', 'avoid').length > 0 && <section className="result-block hit">
           <h2>피해요 · 표기에서 찾았어요</h2>{cards(shown('found', 'avoid'))}</section>}
         {shown('found', 'inform').length > 0 && <section className="result-block inform">
@@ -398,10 +394,6 @@ function App() {
           <h2>확인 필요 {shown('needs_review').length}가지</h2>
           <p className="block-why">이 표기만으로는 그 원재료가 들었는지 확정할 수 없어요.</p>
           {cards(shown('needs_review'))}</section>}
-        {shown('unreadable').length > 0 && <section className="result-block unknown">
-          <h2>확인 불가 {shown('unreadable').length}가지</h2>
-          <p className="block-why">무엇이 들었는지 드러나지 않는 표기가 있어요 — {analysis.opaqueTokens.join(' · ')}</p>
-          {chips(shown('unreadable'))}</section>}
         <details className="result-fold"><summary>읽은 원재료 {analysis.tokens.length}개 보기</summary><p className="read-text">{ingredientText}</p></details>
         {shown('none').length > 0 && <p className="none-note">나머지 {shown('none').length}가지는 읽은 표기에서 발견되지 않았어요. 라벨에 적히지 않은 원료까지 확인할 수는 없어요.</p>}
         <div className="result-actions"><button className="primary" type="button" onClick={() => go('review')}>읽은 원재료 고치기</button><button className="secondary" type="button" onClick={() => go('image')}>다른 사진 확인하기</button><button className="text-button" type="button" onClick={() => go('history')}>확인한 기록 보기</button></div>

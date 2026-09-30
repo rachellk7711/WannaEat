@@ -6,6 +6,8 @@ type Rule = { kind: RuleKind; confidence: Confidence; pattern: string }
 type CriterionRules = { rules: Rule[]; exclude: string[]; excludeSuffix: string[] }
 type OpaqueRule = { kind: '정확' | '접미' | '포함'; pattern: string }
 export type RuleSet = { rulesetVersion: string; criteria: Record<string, CriterionRules>; opaque: OpaqueRule[] }
+// 'unreadable'(확인 불가)는 더 이상 만들지 않는다 — 결과는 표기에 있다/없다만 말한다(2026-09-30).
+// 예전에 저장된 이력을 읽을 수 있게 형식에는 남겨 둔다.
 export type FindingState = 'found' | 'needs_review' | 'unreadable' | 'none'
 export type Finding = { criterionId: string; state: FindingState; tokens: string[]; reasons: string[] }
 export type Analysis = { tokens: string[]; opaqueTokens: string[]; findings: Finding[] }
@@ -132,7 +134,6 @@ export function analyzeIngredients(raw: string, catalog: Catalog, selected: Map<
     const hit = matches.get(criterionId)
     if (hit?.direct.length) return { criterionId, state: 'found' as const, tokens: [...new Set(hit.direct.map(value => value.token))], reasons: [...new Set(hit.direct.map(value => value.reason))] }
     if (hit?.inferred.length) return { criterionId, state: 'needs_review' as const, tokens: [...new Set(hit.inferred.map(value => value.token))], reasons: [...new Set(hit.inferred.map(value => value.reason))] }
-    if (opaqueTokens.length) return { criterionId, state: 'unreadable' as const, tokens: [...new Set(opaqueTokens)], reasons: ['묶음 표기'] }
     return { criterionId, state: 'none' as const, tokens: [], reasons: [] }
   })
   return { tokens: [...new Set(tokenSources.map(item => item.source))], opaqueTokens: [...new Set(opaqueTokens)], findings }

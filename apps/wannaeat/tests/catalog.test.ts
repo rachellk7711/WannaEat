@@ -87,7 +87,8 @@ test('deterministic label analysis respects direct, inferred, excluded and opaqu
   assert.deepEqual(finding('wheat').tokens, ['박력분'])
   assert.equal(finding('soy_oil').state, 'found')
   assert.deepEqual(finding('soy_oil').tokens, ['대두유'])
-  assert.equal(finding('sugar').state, 'unreadable')
+  // 묶음 표기가 있어도 판정은 표기에 있다/없다만 말한다(2026-09-30 결정).
+  assert.equal(finding('sugar').state, 'none')
   assert.deepEqual(result.opaqueTokens, ['복합조미식품'])
 })
 
@@ -107,7 +108,7 @@ test('text extracted from a real label photo produces the expected findings', ()
   // 가공유지는 어떤 기름인지 표기로 알 수 없고, 향료 표기는 그 원재료가 들었다는 뜻이 아니다.
   assert.equal(state('processed_fat'), 'needs_review')
   assert.equal(state('animal_fat'), 'needs_review')
-  // 묶음 표기가 있으면 걸리지 않은 기준은 '없음' 이 아니라 '확인 불가' 다.
-  assert.equal(state('beef'), 'unreadable')
+  // 묶음 표기가 있어도 걸리지 않은 기준은 '없음' 이다. 표기에 있다/없다만 판정한다(2026-09-30).
+  assert.equal(state('beef'), 'none')
   assert.deepEqual(result.opaqueTokens, ['합성향료', '복합조미식품'])
 })

@@ -130,7 +130,7 @@
 .verdict p { margin: 11px 0 0; font-size: 12.5px; line-height: 1.65; opacity: .82; word-break: keep-all; }
 .result-block { margin-bottom: 16px; }
 .result-block h2 { margin: 0 0 9px; font-size: 13px; letter-spacing: -.2px; color: #2f4738; }
-.result-block.review h2, .result-block.unknown h2 { color: #7a6528; }
+.result-block.review h2 { color: #7a6528; }
 .block-why { margin: -4px 0 10px; color: var(--muted); font-size: 12px; line-height: 1.6; word-break: keep-all; }
 .finding { display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap; padding: 13px 15px; margin-bottom: 7px; border: 1px solid #e2e9dd; border-left: 4px solid #cfd9c9; border-radius: 13px; background: #fff; }
 .result-block.hit .finding { border-left-color: var(--green); background: #f4f9f0; }
@@ -138,13 +138,10 @@
 .result-block.review .finding { border-left-color: #d8b45c; background: #fffbf1; }
 .finding h3 { margin: 0; font-size: 15px; letter-spacing: -.3px; }
 .finding p { margin: 0; color: #6d7b6c; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
-.result-chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.result-chips span { padding: 6px 11px; border-radius: 20px; background: #eef2ea; color: #5d6b5c; font-size: 12px; }
 .result-fold { margin-bottom: 12px; border-top: 1px solid #e8ece4; padding-top: 12px; }
 .result-fold summary { cursor: pointer; color: #5d6b5c; font-size: 13px; padding: 4px 0; }
 .result-fold[open] summary { margin-bottom: 10px; }
 .read-text { margin: 0; padding: 12px; border-radius: 12px; background: #f7f9f4; color: #56654f; font-size: 12px; line-height: 1.8; overflow-wrap: anywhere; }
-.opaque-note { margin: -6px 0 16px; padding: 12px 14px; border-radius: 12px; background: #fffbf1; color: #7a6528; font-size: 12px; line-height: 1.65; word-break: keep-all; }
 .none-note { margin: 4px 2px 16px; color: var(--muted); font-size: 12px; line-height: 1.65; word-break: keep-all; }
 .primary.wide { display: flex; width: 100%; margin-top: 12px; }
 .image-actions.row { grid-template-columns: 1fr 1fr; margin-top: 9px; }
@@ -164,3 +161,4 @@
 .sticky-action { position: sticky; bottom: 0; z-index: 5; padding: 10px 0 calc(10px + env(safe-area-inset-bottom)); background: linear-gradient(to bottom, rgba(255, 255, 255, 0), #fff 32%); }
 .sticky-action .primary.wide { margin-top: 0; }
 .send-preview { max-height: 34vh; width: auto; max-width: 100%; margin: 0 auto 12px; }
+.verdict.hit .eyebrow { color: #cfe6d6; }

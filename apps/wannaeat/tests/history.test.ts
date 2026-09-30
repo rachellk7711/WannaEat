@@ -27,7 +27,8 @@ test('history keeps the newest first, drops repeats and stops at the device limi
 test('a stored entry round-trips with the criteria and results of that moment', () => {
   const stored = parseHistory(JSON.parse(JSON.stringify([entry('one')])))
   assert.deepEqual(stored, [entry('one')])
-  assert.deepEqual(summarize(stored[0]), { found: 1, needsReview: 0, unreadable: 1 })
+  // 예전에 저장된 'unreadable' 이력도 읽힌다. 요약에서는 세지 않는다.
+  assert.deepEqual(summarize(stored[0]), { found: 1, needsReview: 0 })
 })
 
 test('unreadable history is rejected instead of being silently replaced', () => {
