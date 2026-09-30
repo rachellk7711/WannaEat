@@ -1,5 +1,4 @@
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://rnfhcwoqcrdoevabtjku.supabase.co'
-const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim()
+import { SUPABASE_PUBLISHABLE_KEY as SUPABASE_KEY, SUPABASE_URL } from './supabase-public.ts'
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024
 
 export type ExtractedIngredients = { ingredientText: string; readable: boolean; remaining?: number; closed?: boolean }

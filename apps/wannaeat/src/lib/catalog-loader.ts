@@ -5,6 +5,7 @@ import type { Release } from '../domain/catalog.ts'
 import { parseRuleSet } from '../domain/analysis.ts'
 import type { RuleSet } from '../domain/analysis.ts'
 import { deviceStorage } from './storage.ts'
+import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from './supabase-public.ts'
 
 const CACHE_KEY = 'wannaeat.catalog.v2'
 export const bundledRelease = parseRelease(snapshot)
@@ -31,8 +32,8 @@ export async function loadCatalog(): Promise<CatalogResult> {
       if (release.rulesetVersion === rules.rulesetVersion) fallback = { release, rules, source: 'cached', verified: false }
     }
   } catch { /* Bundled snapshot is usable when caching is unavailable. */ }
-  const base = import.meta.env.VITE_SUPABASE_URL || 'https://rnfhcwoqcrdoevabtjku.supabase.co'
-  const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim()
+  const base = SUPABASE_URL
+  const key = SUPABASE_PUBLISHABLE_KEY
   if (!key) return fallback
   if (!publicKey(key)) {
     console.error('Supabase requires a publishable/anon key. Check .env.local.')
