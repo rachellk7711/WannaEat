@@ -351,12 +351,18 @@ function App() {
               {open && <div className="history-detail">
                 <h3>그때의 내 기준</h3>
                 <p>{entry.criteria.length ? entry.criteria.map(item => `${item.name}(${strengthLabels[item.strength]})`).join(' · ') : '기준 없음'}</p>
-                <h3>결과</h3>
-                <ul>{entry.findings.map(finding => {
-                  const name = entry.criteria.find(item => item.id === finding.criterionId)?.name ?? finding.criterionId
-                  const label = finding.state === 'found' ? '표기에서 발견' : finding.state === 'needs_review' ? '확인 필요' : '발견 안 됨'
-                  return <li key={finding.criterionId}><b>{name}</b> — {label}{finding.tokens.length ? ` (${finding.tokens.join(' · ')})` : ''}</li>
-                })}</ul>
+                {(() => {
+                  const name = (id: string) => entry.criteria.find(item => item.id === id)?.name ?? id
+                  const found = entry.findings.filter(finding => finding.state === 'found')
+                  const review = entry.findings.filter(finding => finding.state === 'needs_review')
+                  // 예전 이력의 'unreadable' 도 발견 안 됨으로 본다.
+                  const none = entry.findings.filter(finding => finding.state === 'none' || finding.state === 'unreadable')
+                  return <>
+                    {found.length > 0 && <><h3>표기에서 발견 {found.length}가지</h3><ul>{found.map(finding => <li key={finding.criterionId}><b>{name(finding.criterionId)}</b> {finding.tokens.join(' · ')}</li>)}</ul></>}
+                    {review.length > 0 && <><h3>확인 필요 {review.length}가지</h3><ul>{review.map(finding => <li key={finding.criterionId}><b>{name(finding.criterionId)}</b> {finding.tokens.join(' · ')}</li>)}</ul></>}
+                    {none.length > 0 && <><h3>발견 안 됨 {none.length}가지</h3><p>{none.map(finding => name(finding.criterionId)).join(' · ')}</p></>}
+                  </>
+                })()}
                 <h3>읽은 원재료</h3>
                 <p className="history-raw">{entry.ingredientText}</p>
                 <p className="history-version">판정 규칙 {entry.rulesetVersion}</p>
@@ -394,11 +400,10 @@ function App() {
           <h2>확인 필요 {shown('needs_review').length}가지</h2>
           <p className="block-why">이 표기만으로는 그 원재료가 들었는지 확정할 수 없어요.</p>
           {cards(shown('needs_review'))}</section>}
-        {shown('none').length > 0 && <details className="result-fold none-fold">
-          <summary>이 제품 표기에 없는 것 {shown('none').length}가지</summary>
+        {shown('none').length > 0 && <section className="result-block none">
+          <h2>발견 안 됨 {shown('none').length}가지</h2>
           <p className="none-names">{shown('none').map(finding => named(finding.criterionId)).join(' · ')}</p>
-          <p className="block-why">내가 고른 기준 중 이 제품 원재료 표기에서 찾지 못한 것이에요. 라벨에 적히지 않은 원료까지는 알 수 없어요.</p>
-        </details>}
+        </section>}
         <details className="result-fold"><summary>읽은 원재료 {analysis.tokens.length}개 보기</summary><p className="read-text">{ingredientText}</p></details>
         <div className="result-actions"><button className="primary" type="button" onClick={() => go('review')}>읽은 원재료 고치기</button><button className="secondary" type="button" onClick={() => go('image')}>다른 사진 확인하기</button><button className="text-button" type="button" onClick={() => go('history')}>확인한 기록 보기</button></div>
         <p className="result-limit">이 결과는 제품의 성분 안전성, 알레르기, 함량 또는 건강 영향을 판단하지 않아요. 표기와 내 기준의 대조 결과예요.</p>
