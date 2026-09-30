@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useRef } from 'react'
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import type { CropArea } from '../lib/extract.ts'
 
@@ -11,7 +11,6 @@ export default function CropBox({ src, area, onChange, onError }: {
 }) {
   const frame = useRef<HTMLDivElement>(null)
   const start = useRef<{ x: number; y: number } | null>(null)
-  const [dragging, setDragging] = useState(false)
 
   function point(event: ReactPointerEvent) {
     const box = frame.current!.getBoundingClientRect()
@@ -24,7 +23,6 @@ export default function CropBox({ src, area, onChange, onError }: {
   function down(event: ReactPointerEvent) {
     event.currentTarget.setPointerCapture(event.pointerId)
     start.current = point(event)
-    setDragging(true)
     onChange(null)
   }
 
@@ -39,7 +37,6 @@ export default function CropBox({ src, area, onChange, onError }: {
 
   function up() {
     start.current = null
-    setDragging(false)
     // 손가락이 스친 정도는 영역으로 보지 않는다.
     if (area && (area.width < 0.05 || area.height < 0.05)) onChange(null)
   }
@@ -48,6 +45,5 @@ export default function CropBox({ src, area, onChange, onError }: {
   return <div className="crop-frame" ref={frame} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}>
     <img src={src} alt="선택한 원재료 표시" draggable={false} onError={onError} />
     {area && <div className="crop-area" style={style} />}
-    {!area && !dragging && <span className="crop-hint">원재료명 부분을 손가락으로 끌어 선택하면 그 부분만 보내요</span>}
   </div>
 }

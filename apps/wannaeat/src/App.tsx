@@ -264,6 +264,8 @@ function App() {
   }
 
   function setPhoto(uri: string | null) {
+    // 사진을 고르면 안내부터 보이게 맨 위로 올린다.
+    if (uri) window.scrollTo(0, 0)
     setImageMessage('')
     setAnalysisMessage('')
     setConsented(false)
@@ -298,7 +300,13 @@ function App() {
       </>}
       {page === 'criteria' && (!loaded ? <p className="empty" role="status">기준을 불러오고 있어요.</p> : readFailed ? <p className="empty">기준을 다시 불러온 뒤 설정할 수 있어요.</p> : <CriteriaEditor catalog={catalog} rows={draft} onChange={setDraft} busy={busy} onSave={() => void save()} review={review} onCancel={() => go('home')} />)}
       {page === 'image' && <>
-        <section className="intro"><span className="eyebrow">READ THE LABEL</span><h1>{imageUri ? <>원재료명이 보이게<br />잘라주세요.</> : <>이름보다 자세히,<br />원재료를 봐요.</>}</h1><p>{imageUri ? '사진 위에서 원재료명 부분을 손가락으로 끌면 그 부분만 보내요. 고르지 않으면 사진 전체를 보내요.' : '제품의 원재료 표시가 잘 보이는 사진을 골라주세요.'}</p></section>
+        {imageUri
+          ? <section className="step-head">
+              <ol className="steps" aria-label="진행 단계"><li className="on">① 영역 고르기</li><li className={pending ? 'on' : ''}>② 보낼 사진 확인</li><li>③ 결과</li></ol>
+              <h1>{pending ? '이 부분만 보낼게요.' : '원재료명 부분을 손가락으로 끌어 고르세요.'}</h1>
+              <p>{pending ? '동의하면 원재료 글자를 읽어요.' : '고르지 않으면 사진 전체를 보내요. 글자가 누워 있으면 먼저 돌려주세요.'}</p>
+            </section>
+          : <section className="intro"><span className="eyebrow">READ THE LABEL</span><h1>이름보다 자세히,<br />원재료를 봐요.</h1><p>제품의 원재료 표시가 잘 보이는 사진을 골라주세요.</p></section>}
         {!imageUri && <>
           <div className="photo-frame"><LabelArt /><span>원재료명 영역을 담아주세요</span></div>
           <div className="image-actions">
@@ -308,7 +316,7 @@ function App() {
         </>}
         {imageUri && !pending && <>
           <CropBox src={imageUri} area={crop} onChange={area => { setCrop(area); setPending(null); setConsented(false) }} onError={() => { setImageUri(null); setImageMessage('표시할 수 없는 사진이에요. JPG 또는 PNG로 다시 골라주세요.') }} />
-          <button className="primary wide" type="button" disabled={extractBusy || closed} onClick={() => void preparePhoto()}>{crop ? '고른 영역으로 계속하기' : '사진 전체로 계속하기'} <Icon name="arrow" size={19} /></button>
+          <div className="sticky-action"><button className="primary wide" type="button" disabled={extractBusy || closed} onClick={() => void preparePhoto()}>{crop ? '고른 영역으로 계속하기' : '사진 전체로 계속하기'} <Icon name="arrow" size={19} /></button></div>
           <div className="image-actions row">
             <button className="secondary" type="button" disabled={extractBusy} onClick={() => void turnPhoto()}><Icon name="arrow" size={18} /> 사진 돌리기</button>
             <button className="secondary" type="button" disabled={imageBusy || extractBusy} onClick={() => void pickImage()}><Icon name="image" size={18} /> 다른 사진</button>
@@ -316,7 +324,6 @@ function App() {
           <button className="text-button" type="button" onClick={() => setPhoto(null)}>사진 지우기</button>
         </>}
         {pending && <section className="extract-card">
-          <h2>이 부분만 보내요</h2>
           <img className="send-preview" src={pending.preview} alt="분석 서버로 보낼 사진" />
           <p>이 그림에 보이는 부분만 분석 서버로 전송해요. 이름·주소·주문번호가 보이면 영역을 다시 골라주세요. 서버는 사진을 저장하지 않고, 읽은 글자는 다음 화면에서 고칠 수 있어요.</p>
           <label className="consent"><input type="checkbox" checked={consented} disabled={extractBusy} onChange={event => setConsented(event.target.checked)} /><span>이 사진을 보내 원재료 텍스트를 읽는 데 동의해요.</span></label>

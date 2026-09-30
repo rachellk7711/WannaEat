@@ -1,0 +1,19 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><style>body{margin:0}iframe{width:390px;height:844px;border:0;display:block}</style></head><body>
+<iframe id="app"></iframe>
+<script type="module">
+// 사진 단계 화면을 휴대폰 크기로 찍어 보기 위한 준비 페이지. 서버는 부르지 않는다.
+const frame = document.querySelector('#app')
+const wait = async c => { for (let n = 0; n < 200; n++) { if (c()) return; await new Promise(r => setTimeout(r, 100)) } }
+localStorage.clear()
+frame.src = '/#image'
+await wait(() => frame.contentDocument?.querySelector('input[type=file]'))
+const doc = frame.contentDocument
+const blob = await (await fetch('/tests/tall.jpg')).blob()
+const transfer = new frame.contentWindow.DataTransfer()
+transfer.items.add(new frame.contentWindow.File([blob], 'tall.jpg', { type: 'image/jpeg' }))
+const input = doc.querySelector('input[type=file]:not([capture])')
+input.files = transfer.files
+input.dispatchEvent(new frame.contentWindow.Event('change', { bubbles: true }))
+await wait(() => doc.querySelector('.crop-frame img')?.complete)
+document.title = 'ready'
+</script></body></html>

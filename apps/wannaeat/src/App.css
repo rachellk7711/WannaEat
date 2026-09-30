@@ -151,3 +151,16 @@
 .image-actions.row button { justify-content: center; }
 .criterion-row .what { margin: 2px 0 6px; color: #4e5f4d; font-size: 12.5px; line-height: 1.6; word-break: keep-all; }
 .criterion-row .examples { color: #8a968a; }
+
+/* 사진 단계 — 안내 · 사진 · 버튼이 한 화면에 들어오게 */
+.step-head { margin-bottom: 14px; }
+.steps { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; padding: 0; list-style: none; font-size: 11px; color: var(--muted); }
+.steps li { padding: 4px 10px; border-radius: 20px; background: #f0f3ec; }
+.steps li.on { background: var(--green); color: #fff; }
+.step-head h1 { margin: 0 0 6px; font-size: 19px; line-height: 1.45; letter-spacing: -.5px; font-weight: 750; word-break: keep-all; }
+.step-head p { margin: 0; color: var(--muted); font-size: 12.5px; line-height: 1.6; word-break: keep-all; }
+.crop-frame { width: fit-content; max-width: 100%; margin: 0 auto; }
+.crop-frame img { width: auto; max-width: 100%; max-height: 46vh; }
+.sticky-action { position: sticky; bottom: 0; z-index: 5; padding: 10px 0 calc(10px + env(safe-area-inset-bottom)); background: linear-gradient(to bottom, rgba(255, 255, 255, 0), #fff 32%); }
+.sticky-action .primary.wide { margin-top: 0; }
+.send-preview { max-height: 34vh; width: auto; max-width: 100%; margin: 0 auto 12px; }
