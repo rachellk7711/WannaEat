@@ -99,6 +99,17 @@ Set-NetConnectionProfile -InterfaceAlias 'Wi-Fi' -NetworkCategory Private
 Set-NetConnectionProfile -InterfaceAlias 'Wi-Fi' -NetworkCategory Public
 ```
 
+## Supabase 가 멈추지 않게
+
+무료 프로젝트는 **일주일 동안 데이터베이스 요청이 없으면 자동으로 멈춘다.** 멈추면 사진 읽기와 목록 갱신이 모두 끊긴다
+(2026-09-28 실제로 멈춰 휴대폰 시험이 하염없이 기다렸다).
+
+- `.github/workflows/supabase-keepalive.yml` 이 **이틀마다** `keepalive()` 를 부른다. 현재 시각만 돌려주는 함수라 공개 키로 불러도 드러나는 정보가 없다.
+- 저장소 Secrets 에 `SUPABASE_URL` · `SUPABASE_PUBLISHABLE_KEY`(공개용 값)를 둔다. 시크릿 키는 쓰지 않는다.
+- 이미 멈춘 뒤라면 이 작업이 실패하고 GitHub 이 메일을 보낸다. 그때는 대시보드에서 **Restore project** 를 누른다.
+- GitHub 은 60일 동안 커밋이 없는 공개 저장소의 예약 실행을 끈다. 그 전에 메일이 오며, Actions 탭에서 다시 켤 수 있다.
+- 손으로 한 번 돌리려면 Actions 탭 → Supabase keepalive → Run workflow.
+
 ## 사용량 한도와 월 예산 (2026-09-18 결정)
 
 수익 없는 무료 서비스라 **월 예산이 상한**이다. 상한에 닿으면 사진 읽기를 닫고 다시 준비한다.

@@ -1,0 +1,24 @@
+# Supabase 무료 프로젝트는 일주일 동안 데이터베이스 요청이 없으면 멈춘다.
+# 이틀마다 keepalive() 를 불러 깨워 둔다. 이미 멈춰 있으면 이 작업이 실패하고 GitHub 이 메일로 알린다.
+name: Supabase keepalive
+
+on:
+  schedule:
+    - cron: '17 3 */2 * *' # 이틀마다 UTC 03:17 (한국 12:17)
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ping database
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          status=$(curl -s -o response.txt -w '%{http_code}' --retry 3 --retry-delay 20 \
+            -X POST "$SUPABASE_URL/rest/v1/rpc/keepalive" \
+            -H "apikey: $SUPABASE_PUBLISHABLE_KEY" -H "Content-Type: application/json" -d '{}')
+          echo "HTTP $status $(cat response.txt)"
+          test "$status" = "200"
