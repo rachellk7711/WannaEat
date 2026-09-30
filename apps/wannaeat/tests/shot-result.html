@@ -20,5 +20,6 @@ area.dispatchEvent(new frame.contentWindow.Event('input', { bubbles: true }))
 await new Promise(r => setTimeout(r, 150))
 ;[...doc.querySelectorAll('button')].find(b => b.textContent.includes('내 기준과 비교하기')).click()
 await wait(() => doc.querySelector('.verdict'))
+doc.querySelector('.none-fold')?.setAttribute('open', '')
 document.title = 'ready'
 </script></body></html>
