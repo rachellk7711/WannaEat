@@ -333,7 +333,7 @@ function App() {
   }
 
   return <main className="app">
-    {!isNative && <header className="topbar">{page !== 'home' ? <button className="icon-button" type="button" onClick={() => go('home')} aria-label="홈으로 돌아가기"><Icon name="back" /></button> : <BrandMark />}<span className="brand">알고먹을래?</span><span className="topbar-dot" /></header>}
+    {!isNative && <header className="topbar">{page !== 'home' ? <button className="icon-button" type="button" onClick={() => go('home')} aria-label="홈으로 돌아가기"><Icon name="back" /></button> : <BrandMark />}<span className="brand">WannaEat?</span><span className="topbar-dot" /></header>}
     <div className={`content page-${page}`} ref={heading} tabIndex={-1}>
       {message && <div className="notice" role="status">{message}{readFailed && <button className="text-button" type="button" onClick={() => location.reload()}>다시 불러오기</button>}</div>}
       {page === 'home' && <>
@@ -437,7 +437,7 @@ function App() {
           <span className="eyebrow">내 기준 대조 결과</span>
           {shown('found', 'avoid').length
             ? <h1>피해요로 고른 <b>{shown('found', 'avoid').length}가지</b>가<br />표기에 있어요.</h1>
-            : <h1>피해요로 고른 기준은<br />표기에 없었어요.</h1>}
+            : <h1>피해요로 고른 기준은<br />원재료명에 없었어요.</h1>}
           <p>읽은 원재료 표기와 내 기준을 대조한 결과예요.</p>
         </section>
         {shown('found', 'avoid').length > 0 && <section className="result-block hit">
