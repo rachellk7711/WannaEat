@@ -79,11 +79,28 @@ function App() {
     const labels = ids.map(id => strengthLabels[effective.get(id) ?? 'inform'])
     return new Set(labels).size === 1 ? labels[0] : ids.map((id, index) => `${shortName(id)} ${labels[index]}`).join(' · ')
   }
+  // 표기와 기준의 관계는 세 가지다. 한 문장으로 다 쓰면 "가공유지 — 원료로 쇼트닝을 썼을 수 있어요" 처럼 어색해진다.
+  //  · 무엇으로 만들었나  레시틴 → 원료로 대두를 썼을 수 있어요
+  //  · 그것 자체일 수 있다 가공유지 → 쇼트닝·마가린일 수 있어요
+  //  · 그 용도로 썼다     토코페롤 → 산화방지제로 쓰였을 수 있어요
+  const isKind = new Set(['processed_fat', 'other_veg_oil', 'animal_fat', 'syrup', 'other_meat'])
+  const asRole = new Set(['preservative', 'antioxidant', 'colorant'])
+  const toward = (word: string) => {
+    const code = word.charCodeAt(word.length - 1)
+    if (code < 0xac00 || code > 0xd7a3) return `${word}로`
+    const last = (code - 0xac00) % 28
+    return last === 0 || last === 8 ? `${word}로` : `${word}으로`
+  }
   const maybeLine = (kind: 'flavor' | 'either' | 'plain', ids: string[]) => {
-    const what = object(ids.map(shortName).join(', '))
-    return kind === 'flavor' ? `향 이름이에요. 원료로 ${what} 실제로 썼는지는 알 수 없어요.`
-      : kind === 'either' ? `둘 중 무엇인지 적혀 있지 않아요. 원료로 ${what} 썼을 수 있어요.`
-      : `원료로 ${what} 썼을 수 있어요.`
+    const names = (list: string[]) => list.map(shortName).join(', ')
+    if (kind === 'flavor') return `향 이름이에요. 원료로 ${object(names(ids))} 실제로 썼는지는 알 수 없어요.`
+    const made = ids.filter(id => !isKind.has(id) && !asRole.has(id)), same = ids.filter(id => isKind.has(id)), role = ids.filter(id => asRole.has(id))
+    const sentences = [
+      made.length ? `원료로 ${object(names(made))} 썼을 수 있어요.` : '',
+      same.length ? `${names(same)}일 수 있어요.` : '',
+      role.length ? `${toward(names(role))} 쓰였을 수 있어요.` : '',
+    ].filter(Boolean).join(' ')
+    return kind === 'either' ? `둘 중 무엇인지 적혀 있지 않아요. ${sentences}` : sentences
   }
   const cards = (list: { criterionId: string; tokens: string[] }[]) => list.map(finding =>
     <article className="finding" key={finding.criterionId}>
@@ -384,12 +401,9 @@ function App() {
                   const name = (id: string) => entry.criteria.find(item => item.id === id)?.name ?? id
                   const found = entry.findings.filter(finding => finding.state === 'found')
                   const review = entry.findings.filter(finding => finding.state === 'needs_review')
-                  // 예전 이력의 'unreadable' 도 발견 안 됨으로 본다.
-                  const none = entry.findings.filter(finding => finding.state === 'none' || finding.state === 'unreadable')
                   return <>
                     {found.length > 0 && <><h3>표기에서 발견 {found.length}가지</h3><ul>{found.map(finding => <li key={finding.criterionId}><b>{name(finding.criterionId)}</b> {finding.tokens.join(' · ')}</li>)}</ul></>}
-                    {review.length > 0 && <><h3>원료로 썼을 수 있어요 {review.length}가지</h3><ul>{review.map(finding => <li key={finding.criterionId}><b>{name(finding.criterionId)}</b> {finding.tokens.join(' · ')}</li>)}</ul></>}
-                    {none.length > 0 && <><h3>발견 안 됨 {none.length}가지</h3><p>{none.map(finding => name(finding.criterionId)).join(' · ')}</p></>}
+                    {review.length > 0 && <><h3>가능성이 있어요 {review.length}가지</h3><ul>{review.map(finding => <li key={finding.criterionId}><b>{name(finding.criterionId)}</b> {finding.tokens.join(' · ')}</li>)}</ul></>}
                   </>
                 })()}
                 <h3>읽은 원재료</h3>
@@ -426,7 +440,7 @@ function App() {
         {shown('found', 'inform').length > 0 && <section className="result-block inform">
           <h2>알려만줘요 · 표기에서 찾았어요</h2>{cards(shown('found', 'inform'))}</section>}
         {shown('needs_review').length > 0 && <section className="result-block review">
-          <h2>원료로 썼을 수 있어요</h2>
+          <h2>가능성이 있어요</h2>
           {maybe().map(([token, entry]) => <article className="finding maybe" key={token}>
             <div className="maybe-head"><h3>{token}</h3><span className="maybe-strength">{strengthBadge(entry.ids)}</span></div>
             <p>{maybeLine(entry.kind, entry.ids)}</p>

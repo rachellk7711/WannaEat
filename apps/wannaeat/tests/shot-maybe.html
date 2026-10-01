@@ -7,7 +7,7 @@ const wait = async c => { for (let n = 0; n < 200; n++) { if (c()) return; await
 localStorage.clear()
 const snapshot = await (await fetch('/src/catalog.snapshot.json')).json()
 localStorage.setItem('wannaeat.criteria.v2', JSON.stringify({ rulesetVersion: snapshot.rulesetVersion, selections: [
-  { kind: 'criterion', id: 'wheat', strength: 'avoid' }, { kind: 'criterion', id: 'egg', strength: 'avoid' }, { kind: 'criterion', id: 'animal_fat', strength: 'inform' }, { kind: 'criterion', id: 'peanut', strength: 'avoid' }, { kind: 'criterion', id: 'processed_fat', strength: 'inform' },
+  { kind: 'criterion', id: 'wheat', strength: 'avoid' }, { kind: 'criterion', id: 'egg', strength: 'avoid' }, { kind: 'criterion', id: 'animal_fat', strength: 'inform' }, { kind: 'criterion', id: 'peanut', strength: 'avoid' }, { kind: 'criterion', id: 'processed_fat', strength: 'inform' }, { kind: 'criterion', id: 'antioxidant', strength: 'inform' },
   { kind: 'subgroup', id: 'seed_oils', strength: 'avoid' }, { kind: 'criterion', id: 'dairy', strength: 'inform' },
   { kind: 'criterion', id: 'tree_nut', strength: 'inform' }, { kind: 'criterion', id: 'soy', strength: 'avoid' } ] }))
 frame.src = '/?check=result#review'
@@ -15,7 +15,7 @@ await wait(() => frame.contentDocument?.querySelector('#ingredient-text'))
 const doc = frame.contentDocument
 const area = doc.querySelector('#ingredient-text')
 const setter = Object.getOwnPropertyDescriptor(frame.contentWindow.HTMLTextAreaElement.prototype, 'value').set
-setter.call(area, '밀가루, 설탕, 레시틴, 마요네즈, 합성향료(버터향), 땅콩또는견과류가공품, 가공유지')
+setter.call(area, '밀가루, 설탕, 레시틴, 마요네즈, 합성향료(버터향), 땅콩또는견과류가공품, 가공유지, 토코페롤')
 area.dispatchEvent(new frame.contentWindow.Event('input', { bubbles: true }))
 await new Promise(r => setTimeout(r, 150))
 ;[...doc.querySelectorAll('button')].find(b => b.textContent.includes('내 기준과 비교하기')).click()
