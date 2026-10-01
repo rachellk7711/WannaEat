@@ -9,7 +9,9 @@ export type RuleSet = { rulesetVersion: string; criteria: Record<string, Criteri
 // 'unreadable'(확인 불가)는 더 이상 만들지 않는다 — 결과는 표기에 있다/없다만 말한다(2026-09-30).
 // 예전에 저장된 이력을 읽을 수 있게 형식에는 남겨 둔다.
 export type FindingState = 'found' | 'needs_review' | 'unreadable' | 'none'
-export type Finding = { criterionId: string; state: FindingState; tokens: string[]; reasons: string[] }
+/** 들었을 수 있다고 본 표기와 그 이유. 화면이 "왜 그런지" 한 줄로 말하는 데 쓴다. */
+export type Evidence = { token: string; reason: string }
+export type Finding = { criterionId: string; state: FindingState; tokens: string[]; reasons: string[]; evidence?: Evidence[] }
 export type Analysis = { tokens: string[]; opaqueTokens: string[]; findings: Finding[] }
 
 const record = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value)
@@ -72,7 +74,7 @@ export function splitIngredients(raw: string) {
 /** 라벨의 괄호 안은 복합원재료의 하위 원료다 — `전분(타피오카전분, 감자전분)`.
  *  깊이에 상관없이 모두 원재료로 읽는다. 버리면 그 원료가 없는 것처럼 보인다. */
 function expand(raw: string, parent = '') {
-  const result: { parent: string; token: string; raw: string }[] = []
+  const result: { parent: string; token: string; raw: string; either: boolean }[] = []
   for (const item of splitIngredients(raw)) {
     let outside = '', depth = 0, inner = '', start = 0
     for (const char of item) {
@@ -82,7 +84,9 @@ function expand(raw: string, parent = '') {
       else if (start) inner += char
     }
     // 원산지는 원료와 `/` `:` 로 붙어 나온다 — `외국산(미국)/어육살` · `밀:미국산`
-    const heads = outside.split(/[/·:]|또는/).map(piece => ({ raw: piece.trim(), token: normalizeIngredient(piece) })).filter(piece => piece.token)
+    // `땅콩또는견과류가공품` 은 둘 중 하나라는 뜻이다. 나누되 둘 다 들었다고 말하지 않도록 표시해 둔다.
+    const either = outside.includes('또는')
+    const heads = outside.split(/[/·:]|또는/).map(piece => ({ raw: either ? outside.trim() : piece.trim(), token: normalizeIngredient(piece), either })).filter(piece => piece.token)
     for (const head of heads) result.push({ parent, ...head })
     if (inner.trim()) result.push(...expand(inner, heads[0]?.token ?? parent))
   }
@@ -120,12 +124,15 @@ function opaqueToken(token: string, rules: RuleSet) {
 
 export function analyzeIngredients(raw: string, catalog: Catalog, selected: Map<string, Strength>, rules: RuleSet): Analysis {
   // 괄호 안 하위 원료까지 모두 읽는다. 부모가 향료 표기면 그 안은 추정으로만 본다.
-  const tokenSources = expand(raw).map(item => ({ source: item.raw || item.token, token: item.token, parent: item.parent }))
+  const tokenSources = expand(raw).map(item => ({ source: item.raw || item.token, token: item.token, parent: item.parent, either: item.either }))
   const matches = new Map<string, { direct: { token: string; reason: string }[]; inferred: { token: string; reason: string }[] }>()
-  for (const { source, token, parent } of tokenSources) for (const hit of findInToken(token, rules)) {
+  for (const { source, token, parent, either } of tokenSources) for (const hit of findInToken(token, rules)) {
     const item = matches.get(hit.criterionId) ?? { direct: [], inferred: [] }
-    const confidence = hit.confidence === '직접' && isFlavor(parent) && !flavorCriteria.has(hit.criterionId) ? '추정' : hit.confidence
-    item[confidence === '직접' ? 'direct' : 'inferred'].push({ token: source, reason: hit.reason })
+    const insideFlavor = hit.confidence === '직접' && isFlavor(parent) && !flavorCriteria.has(hit.criterionId)
+    const oneOfTwo = hit.confidence === '직접' && either
+    const confidence = insideFlavor || oneOfTwo ? '추정' : hit.confidence
+    const reason = insideFlavor ? `향료표기·${hit.reason}` : oneOfTwo ? `또는표기·${hit.reason}` : hit.reason
+    item[confidence === '직접' ? 'direct' : 'inferred'].push({ token: source, reason })
     matches.set(hit.criterionId, item)
   }
   const opaqueTokens = tokenSources.filter(item => opaqueToken(item.token, rules)).map(item => item.source)
@@ -133,7 +140,7 @@ export function analyzeIngredients(raw: string, catalog: Catalog, selected: Map<
   const findings = [...selected.keys()].filter(id => catalogIds.has(id)).map(criterionId => {
     const hit = matches.get(criterionId)
     if (hit?.direct.length) return { criterionId, state: 'found' as const, tokens: [...new Set(hit.direct.map(value => value.token))], reasons: [...new Set(hit.direct.map(value => value.reason))] }
-    if (hit?.inferred.length) return { criterionId, state: 'needs_review' as const, tokens: [...new Set(hit.inferred.map(value => value.token))], reasons: [...new Set(hit.inferred.map(value => value.reason))] }
+    if (hit?.inferred.length) return { criterionId, state: 'needs_review' as const, tokens: [...new Set(hit.inferred.map(value => value.token))], reasons: [...new Set(hit.inferred.map(value => value.reason))], evidence: hit.inferred.filter((value, index, list) => list.findIndex(other => other.token === value.token) === index) }
     return { criterionId, state: 'none' as const, tokens: [], reasons: [] }
   })
   return { tokens: [...new Set(tokenSources.map(item => item.source))], opaqueTokens: [...new Set(opaqueTokens)], findings }

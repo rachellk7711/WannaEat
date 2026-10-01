@@ -1,0 +1,24 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><style>body{margin:0}iframe{width:390px;height:1400px;border:0;display:block}</style></head><body>
+<iframe id="app"></iframe>
+<script type="module">
+// 결과 화면을 휴대폰 폭으로 찍어 보기 위한 준비 페이지. 서버는 부르지 않는다.
+const frame = document.querySelector('#app')
+const wait = async c => { for (let n = 0; n < 200; n++) { if (c()) return; await new Promise(r => setTimeout(r, 100)) } }
+localStorage.clear()
+const snapshot = await (await fetch('/src/catalog.snapshot.json')).json()
+localStorage.setItem('wannaeat.criteria.v2', JSON.stringify({ rulesetVersion: snapshot.rulesetVersion, selections: [
+  { kind: 'criterion', id: 'wheat', strength: 'avoid' }, { kind: 'criterion', id: 'egg', strength: 'avoid' }, { kind: 'criterion', id: 'animal_fat', strength: 'inform' }, { kind: 'criterion', id: 'peanut', strength: 'avoid' }, { kind: 'criterion', id: 'processed_fat', strength: 'inform' },
+  { kind: 'subgroup', id: 'seed_oils', strength: 'avoid' }, { kind: 'criterion', id: 'dairy', strength: 'inform' },
+  { kind: 'criterion', id: 'tree_nut', strength: 'inform' }, { kind: 'criterion', id: 'soy', strength: 'avoid' } ] }))
+frame.src = '/?check=result#review'
+await wait(() => frame.contentDocument?.querySelector('#ingredient-text'))
+const doc = frame.contentDocument
+const area = doc.querySelector('#ingredient-text')
+const setter = Object.getOwnPropertyDescriptor(frame.contentWindow.HTMLTextAreaElement.prototype, 'value').set
+setter.call(area, '밀가루, 설탕, 레시틴, 마요네즈, 합성향료(버터향), 땅콩또는견과류가공품, 가공유지')
+area.dispatchEvent(new frame.contentWindow.Event('input', { bubbles: true }))
+await new Promise(r => setTimeout(r, 150))
+;[...doc.querySelectorAll('button')].find(b => b.textContent.includes('내 기준과 비교하기')).click()
+await wait(() => doc.querySelector('.verdict'))
+document.title = 'ready'
+</script></body></html>

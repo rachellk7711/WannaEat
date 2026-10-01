@@ -112,3 +112,15 @@ test('text extracted from a real label photo produces the expected findings', ()
   assert.equal(state('beef'), 'none')
   assert.deepEqual(result.opaqueTokens, ['합성향료', '복합조미식품'])
 })
+
+test('a guessed match says which label word it came from and why', () => {
+  const selected = new Map([['soy', 'avoid'] as const, ['animal_fat', 'inform'] as const, ['peanut', 'avoid'] as const])
+  const result = analyzeIngredients('레시틴, 합성향료(버터향), 땅콩또는견과류가공품', catalog, selected, rules)
+  const evidence = (id: string) => result.findings.find(finding => finding.criterionId === id)!.evidence ?? []
+  // 레시틴은 대부분 콩에서 뽑는다 — 대두일 수 있다.
+  assert.deepEqual(evidence('soy').map(item => item.token), ['레시틴'])
+  // 버터향은 향 이름이다 — 화면이 "실제로 썼는지는 알 수 없다" 고 말할 수 있게 이유가 붙는다.
+  assert.ok(evidence('animal_fat').some(item => item.token === '버터향' && item.reason.startsWith('향료표기')))
+  // 땅콩또는견과류가공품은 둘 중 무엇인지 알 수 없다.
+  assert.ok(evidence('peanut').some(item => item.reason.startsWith('또는표기')))
+})

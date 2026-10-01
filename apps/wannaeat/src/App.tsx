@@ -56,6 +56,35 @@ function App() {
   // 결과는 걸린 것부터 보여준다. 고른 기준을 그대로 나열하면 정작 중요한 것이 묻힌다.
   const shown = (state: string, strength?: string) => (analysis?.findings ?? [])
     .filter(finding => finding.state === state && (!strength || effective.get(finding.criterionId) === strength))
+  // 「들었을 수 있어요」 — 라벨에 보이는 글자를 앞에 두고, 무엇이 왜 들었을 수 있는지 한 줄로 말한다.
+  const shortName = (id: string) => named(id).replace(/\(.*?\)/g, '').trim()
+  // 레시틴은 콩 자체가 아니라 콩에서 뽑은 성분이다. "대두가 들었다" 보다 "원료로 대두를 썼다" 가 사실에 맞다.
+  const object = (word: string) => {
+    const code = word.charCodeAt(word.length - 1)
+    return code >= 0xac00 && code <= 0xd7a3 && (code - 0xac00) % 28 === 0 ? `${word}를` : `${word}을`
+  }
+  const maybe = () => {
+    const byToken = new Map<string, { kind: 'flavor' | 'either' | 'plain'; ids: string[] }>()
+    for (const finding of shown('needs_review')) for (const item of finding.evidence ?? finding.tokens.map(token => ({ token, reason: '' }))) {
+      const entry = byToken.get(item.token) ?? { kind: item.reason.startsWith('향료표기') ? 'flavor' as const : item.reason.startsWith('또는표기') ? 'either' as const : 'plain' as const, ids: [] }
+      if (!entry.ids.includes(finding.criterionId)) entry.ids.push(finding.criterionId)
+      byToken.set(item.token, entry)
+    }
+    // 피해요가 걸린 표기를 먼저 보여준다.
+    const avoids = (ids: string[]) => ids.some(id => effective.get(id) === 'avoid') ? 0 : 1
+    return [...byToken].sort((a, b) => avoids(a[1].ids) - avoids(b[1].ids))
+  }
+  // 강도가 하나면 그대로, 섞여 있으면 어느 기준이 어느 강도인지 이름을 붙인다.
+  const strengthBadge = (ids: string[]) => {
+    const labels = ids.map(id => strengthLabels[effective.get(id) ?? 'inform'])
+    return new Set(labels).size === 1 ? labels[0] : ids.map((id, index) => `${shortName(id)} ${labels[index]}`).join(' · ')
+  }
+  const maybeLine = (kind: 'flavor' | 'either' | 'plain', ids: string[]) => {
+    const what = object(ids.map(shortName).join(', '))
+    return kind === 'flavor' ? `향 이름이에요. 원료로 ${what} 실제로 썼는지는 알 수 없어요.`
+      : kind === 'either' ? `둘 중 무엇인지 적혀 있지 않아요. 원료로 ${what} 썼을 수 있어요.`
+      : `원료로 ${what} 썼을 수 있어요.`
+  }
   const cards = (list: { criterionId: string; tokens: string[] }[]) => list.map(finding =>
     <article className="finding" key={finding.criterionId}>
       <h3>{named(finding.criterionId)}</h3>
@@ -359,7 +388,7 @@ function App() {
                   const none = entry.findings.filter(finding => finding.state === 'none' || finding.state === 'unreadable')
                   return <>
                     {found.length > 0 && <><h3>표기에서 발견 {found.length}가지</h3><ul>{found.map(finding => <li key={finding.criterionId}><b>{name(finding.criterionId)}</b> {finding.tokens.join(' · ')}</li>)}</ul></>}
-                    {review.length > 0 && <><h3>확인 필요 {review.length}가지</h3><ul>{review.map(finding => <li key={finding.criterionId}><b>{name(finding.criterionId)}</b> {finding.tokens.join(' · ')}</li>)}</ul></>}
+                    {review.length > 0 && <><h3>원료로 썼을 수 있어요 {review.length}가지</h3><ul>{review.map(finding => <li key={finding.criterionId}><b>{name(finding.criterionId)}</b> {finding.tokens.join(' · ')}</li>)}</ul></>}
                     {none.length > 0 && <><h3>발견 안 됨 {none.length}가지</h3><p>{none.map(finding => name(finding.criterionId)).join(' · ')}</p></>}
                   </>
                 })()}
@@ -397,9 +426,11 @@ function App() {
         {shown('found', 'inform').length > 0 && <section className="result-block inform">
           <h2>알려만줘요 · 표기에서 찾았어요</h2>{cards(shown('found', 'inform'))}</section>}
         {shown('needs_review').length > 0 && <section className="result-block review">
-          <h2>확인 필요 {shown('needs_review').length}가지</h2>
-          <p className="block-why">이 표기만으로는 그 원재료가 들었는지 확정할 수 없어요.</p>
-          {cards(shown('needs_review'))}</section>}
+          <h2>원료로 썼을 수 있어요</h2>
+          {maybe().map(([token, entry]) => <article className="finding maybe" key={token}>
+            <div className="maybe-head"><h3>{token}</h3><span className="maybe-strength">{strengthBadge(entry.ids)}</span></div>
+            <p>{maybeLine(entry.kind, entry.ids)}</p>
+          </article>)}</section>}
         <details className="result-fold"><summary>읽은 원재료 {analysis.tokens.length}개 보기</summary><p className="read-text">{ingredientText}</p></details>
         <div className="result-actions"><button className="primary" type="button" onClick={() => go('review')}>읽은 원재료 고치기</button><button className="secondary" type="button" onClick={() => go('image')}>다른 사진 확인하기</button><button className="text-button" type="button" onClick={() => go('history')}>확인한 기록 보기</button></div>
         <p className="result-limit">이 결과는 제품의 성분 안전성, 알레르기, 함량 또는 건강 영향을 판단하지 않아요. 표기와 내 기준의 대조 결과예요.</p>
