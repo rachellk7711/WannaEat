@@ -326,6 +326,12 @@ function App() {
     setImageUri(uri)
   }
 
+  // 새 라벨을 확인하러 갈 때는 앞 사진·고른 영역·보낼 그림을 모두 비운다.
+  function newPhoto() {
+    setPhoto(null)
+    go('image')
+  }
+
   function localPhoto(file?: File) {
     if (!file) return
     if (!file.type.startsWith('image/') || file.size > 20 * 1024 * 1024) { setImageMessage('20MB 이하의 이미지 파일을 골라주세요.'); return }
@@ -338,8 +344,8 @@ function App() {
       {message && <div className="notice" role="status">{message}{readFailed && <button className="text-button" type="button" onClick={() => location.reload()}>다시 불러오기</button>}</div>}
       {page === 'home' && <>
         <section className="intro"><span className="eyebrow"><span className="tiny-dot" /> 나를 위한 식품 선택</span><h1>먹기 전에,<br />내 기준으로 한 번 더.</h1><p>길고 복잡한 라벨, 이제 사진 한 장으로 똑똑하게 걸러내요.</p></section>
-        <section className="scan-card"><div className="scan-card-top"><span><Icon name="camera" size={16} /> 라벨로 확인</span><span>01</span></div><LabelArt /><h2>궁금한 제품이 있나요?</h2><p>원재료 표시를 사진으로 담아주세요.</p><button className="primary" type="button" onClick={() => go('image')}>라벨 확인하기 <Icon name="arrow" size={19} /></button></section>
-        <button className="gallery-link" type="button" onClick={() => { go('image'); void pickImage() }}><Icon name="image" size={18} /> 사진첩에서 가져오기 <Icon name="arrow" size={16} /></button>
+        <section className="scan-card"><div className="scan-card-top"><span><Icon name="camera" size={16} /> 라벨로 확인</span><span>01</span></div><LabelArt /><h2>궁금한 제품이 있나요?</h2><p>원재료 표시를 사진으로 담아주세요.</p><button className="primary" type="button" onClick={newPhoto}>라벨 확인하기 <Icon name="arrow" size={19} /></button></section>
+        <button className="gallery-link" type="button" onClick={() => { newPhoto(); void pickImage() }}><Icon name="image" size={18} /> 사진첩에서 가져오기 <Icon name="arrow" size={16} /></button>
         <button className="gallery-link" type="button" onClick={() => go('history')}><Icon name="sliders" size={18} /> 확인한 기록 {history.length ? `${history.length}건` : '보기'} <Icon name="arrow" size={16} /></button>
         <section className="my-criteria"><div className="section-line"><h2><Icon name="sliders" size={20} /> 내 기준</h2><button className="text-button" type="button" disabled={busy || readFailed} onClick={() => go('criteria')}>{selected.length ? '수정' : '설정하기'} <Icon name="arrow" size={15} /></button></div>
           {busy ? <p role="status">내 기준을 불러오고 있어요.</p> : <>
@@ -380,6 +386,7 @@ function App() {
           <button className="primary" type="button" disabled={!consented || extractBusy || closed} onClick={() => void readPhoto()}>{extractBusy ? '원재료를 읽는 중…' : '원재료 읽기'}</button>
           {remaining !== null && <p className="remaining">오늘 남은 확인 {remaining}장</p>}
           <button className="text-button" type="button" disabled={extractBusy} onClick={() => { setPending(null); setConsented(false) }}>영역 다시 고르기</button>
+          <button className="text-button" type="button" disabled={extractBusy} onClick={() => setPhoto(null)}>다른 사진 고르기</button>
         </section>}
         {closed && <p className="notice" role="status">이번 달 무료 분석이 모두 끝났어요. 다음 달에 다시 열려요. 그때까지도 이미 확인한 기록은 볼 수 있어요.</p>}
         {imageMessage && <p className="notice" role="status">{imageMessage}</p>}
@@ -389,7 +396,7 @@ function App() {
       {page === 'history' && <>
         <section className="intro"><span className="eyebrow">MY RECORDS</span><h1>지금까지<br />확인한 기록이에요.</h1><p>이 기기에만 저장돼요. 사진은 저장하지 않고, 읽은 원재료와 그때의 내 기준만 남겨요.</p></section>
         {historyMessage && <p className="notice" role="status">{historyMessage}</p>}
-        {history.length === 0 ? <section className="empty"><strong>아직 확인한 기록이 없어요.</strong><p>라벨을 확인하면 결과가 이 기기에 쌓여요.</p><button className="secondary" type="button" onClick={() => go('image')}>라벨 확인하기</button></section> : <>
+        {history.length === 0 ? <section className="empty"><strong>아직 확인한 기록이 없어요.</strong><p>라벨을 확인하면 결과가 이 기기에 쌓여요.</p><button className="secondary" type="button" onClick={newPhoto}>라벨 확인하기</button></section> : <>
           <div className="history-list">{history.map(entry => {
             const counts = summarize(entry)
             const open = openEntry === entry.id
@@ -451,7 +458,7 @@ function App() {
             <p>{maybeLine(entry.kind, entry.ids, entry.corrected)}</p>
           </article>)}</section>}
         <details className="result-fold"><summary>읽은 원재료 {analysis.tokens.length}개 보기</summary><p className="read-text">{ingredientText}</p></details>
-        <div className="result-actions"><button className="primary" type="button" onClick={() => go('review')}>읽은 원재료 고치기</button><button className="secondary" type="button" onClick={() => go('image')}>다른 사진 확인하기</button><button className="text-button" type="button" onClick={() => go('history')}>확인한 기록 보기</button></div>
+        <div className="result-actions"><button className="primary" type="button" onClick={() => go('review')}>읽은 원재료 고치기</button><button className="secondary" type="button" onClick={newPhoto}>다른 사진 확인하기</button><button className="text-button" type="button" onClick={() => go('history')}>확인한 기록 보기</button></div>
         <p className="result-limit">이 결과는 제품의 성분 안전성, 알레르기, 함량 또는 건강 영향을 판단하지 않아요. 원재료명과 내 기준의 대조 결과예요.</p>
       </>}
     </div>
