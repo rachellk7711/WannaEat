@@ -400,10 +400,6 @@ function App() {
           <h2>확인 필요 {shown('needs_review').length}가지</h2>
           <p className="block-why">이 표기만으로는 그 원재료가 들었는지 확정할 수 없어요.</p>
           {cards(shown('needs_review'))}</section>}
-        {shown('none').length > 0 && <section className="result-block none">
-          <h2>발견 안 됨 {shown('none').length}가지</h2>
-          <p className="none-names">{shown('none').map(finding => named(finding.criterionId)).join(' · ')}</p>
-        </section>}
         <details className="result-fold"><summary>읽은 원재료 {analysis.tokens.length}개 보기</summary><p className="read-text">{ingredientText}</p></details>
         <div className="result-actions"><button className="primary" type="button" onClick={() => go('review')}>읽은 원재료 고치기</button><button className="secondary" type="button" onClick={() => go('image')}>다른 사진 확인하기</button><button className="text-button" type="button" onClick={() => go('history')}>확인한 기록 보기</button></div>
         <p className="result-limit">이 결과는 제품의 성분 안전성, 알레르기, 함량 또는 건강 영향을 판단하지 않아요. 표기와 내 기준의 대조 결과예요.</p>

@@ -81,7 +81,7 @@ if (new URLSearchParams(location.search).get('run') !== 'isolated') {
   textButton('내 기준과 비교하기').click(); await wait(()=>doc().querySelector('.verdict'))
   check('the verdict leads with what was found', doc().querySelector('.verdict').textContent.includes('피해요') && doc().querySelector('.result-block.hit').textContent.includes('밀'))
   check('there is no 확인 불가 section any more', !doc().querySelector('.result-block.unknown') && !doc().querySelector('.opaque-note') && !doc().body.textContent.includes('확인 불가'))
-  check('criteria not on the label are named, not just counted', doc().querySelector('.result-block.none h2')?.textContent.includes('발견 안 됨 1가지') && doc().querySelector('.result-block.none .none-names')?.textContent.includes('설탕'))
+  check('the result shows only what was found, not the criteria that were not', !doc().querySelector('.result-block.none') && !doc().querySelector('.verdict').parentElement.textContent.includes('발견 안 됨'))
   check('the raw reading stays folded', [...doc().querySelectorAll('.result-fold summary')].some(item => item.textContent.includes('읽은 원재료')))
   textButton('확인한 기록 보기').click(); await wait(()=>doc().querySelector('.history-list'))
   check('result is kept on this device', doc().querySelectorAll('.history-row').length === 1 && doc().querySelector('.history-text').textContent.includes('박력분'))
