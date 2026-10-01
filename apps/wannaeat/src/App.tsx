@@ -48,6 +48,8 @@ function App() {
   const fileInput = useRef<HTMLInputElement>(null)
   const cameraInput = useRef<HTMLInputElement>(null)
   const heading = useRef<HTMLDivElement>(null)
+  // 기준을 저장한 뒤 돌아갈 곳. 사진·읽은 원재료를 두고 기준을 고르러 갔다면 그 자리로 돌아간다.
+  const afterCriteria = useRef<'image' | 'review' | null>(null)
   const catalog = release.catalog
   const effective = effectiveSelections(catalog, saved.selections)
   const selected = allCriteria(catalog).filter(c => effective.has(c.id))
@@ -168,6 +170,7 @@ function App() {
 
   function go(next: Page) {
     setMessage('')
+    if (next !== 'criteria') afterCriteria.current = null
     if (next === 'criteria') setDraft(saved.selections.filter(row => validSelection(catalog, row)))
     // oxlint-disable-next-line react/immutability -- hash routing is browser navigation state.
     location.hash = next === 'home' ? '' : next
@@ -278,8 +281,10 @@ function App() {
       oldRaw.current = raw
       setSaved(prefs)
       setReview('')
-      go('home')
-      setMessage('내 기준을 저장했어요.')
+      const next = afterCriteria.current
+      afterCriteria.current = null
+      go(next ?? 'home')
+      setMessage(next === 'review' ? '내 기준을 저장했어요. 이제 비교할 수 있어요.' : next === 'image' ? '내 기준을 저장했어요. 이제 사진을 넣어주세요.' : '내 기준을 저장했어요.')
     } catch { setMessage('저장하지 못했어요. 선택은 그대로 두었으니 다시 시도해 주세요.') }
     finally { setBusy(false) }
   }
@@ -327,9 +332,28 @@ function App() {
   }
 
   // 새 라벨을 확인하러 갈 때는 앞 사진·고른 영역·보낼 그림을 모두 비운다.
-  function newPhoto() {
+  // 기준이 없으면 사진을 읽어도 비교할 수 없으니(하루 몫만 줄어든다) 기준부터 고르게 한다.
+  function newPhoto(fromAlbum = false) {
+    if (!selected.length) {
+      afterCriteria.current = 'image'
+      go('criteria')
+      setMessage('먼저 확인할 원재료를 골라주세요. 저장하면 바로 사진을 넣을 수 있어요.')
+      return
+    }
     setPhoto(null)
     go('image')
+    if (fromAlbum) void pickImage()
+  }
+
+  function setCriteriaThenBack() {
+    afterCriteria.current = 'review'
+    go('criteria')
+  }
+
+  function cancelCriteria() {
+    const back = afterCriteria.current === 'review' ? 'review' : 'home'
+    afterCriteria.current = null
+    go(back)
   }
 
   function localPhoto(file?: File) {
@@ -344,8 +368,8 @@ function App() {
       {message && <div className="notice" role="status">{message}{readFailed && <button className="text-button" type="button" onClick={() => location.reload()}>다시 불러오기</button>}</div>}
       {page === 'home' && <>
         <section className="intro"><span className="eyebrow"><span className="tiny-dot" /> 나를 위한 식품 선택</span><h1>먹기 전에,<br />내 기준으로 한 번 더.</h1><p>길고 복잡한 라벨, 이제 사진 한 장으로 똑똑하게 걸러내요.</p></section>
-        <section className="scan-card"><div className="scan-card-top"><span><Icon name="camera" size={16} /> 라벨로 확인</span><span>01</span></div><LabelArt /><h2>궁금한 제품이 있나요?</h2><p>원재료 표시를 사진으로 담아주세요.</p><button className="primary" type="button" onClick={newPhoto}>라벨 확인하기 <Icon name="arrow" size={19} /></button></section>
-        <button className="gallery-link" type="button" onClick={() => { newPhoto(); void pickImage() }}><Icon name="image" size={18} /> 사진첩에서 가져오기 <Icon name="arrow" size={16} /></button>
+        <section className="scan-card"><div className="scan-card-top"><span><Icon name="camera" size={16} /> 라벨로 확인</span><span>01</span></div><LabelArt /><h2>궁금한 제품이 있나요?</h2><p>원재료 표시를 사진으로 담아주세요.</p><button className="primary" type="button" onClick={() => newPhoto()}>라벨 확인하기 <Icon name="arrow" size={19} /></button></section>
+        <button className="gallery-link" type="button" onClick={() => newPhoto(true)}><Icon name="image" size={18} /> 사진첩에서 가져오기 <Icon name="arrow" size={16} /></button>
         <button className="gallery-link" type="button" onClick={() => go('history')}><Icon name="sliders" size={18} /> 확인한 기록 {history.length ? `${history.length}건` : '보기'} <Icon name="arrow" size={16} /></button>
         <section className="my-criteria"><div className="section-line"><h2><Icon name="sliders" size={20} /> 내 기준</h2><button className="text-button" type="button" disabled={busy || readFailed} onClick={() => go('criteria')}>{selected.length ? '수정' : '설정하기'} <Icon name="arrow" size={15} /></button></div>
           {busy ? <p role="status">내 기준을 불러오고 있어요.</p> : <>
@@ -354,7 +378,7 @@ function App() {
           </>}
         </section><p className="brand-signoff"><Icon name="leaf" size={15} /> 내 몸을 위한 선택, 타협하지 마세요.</p>
       </>}
-      {page === 'criteria' && (!loaded ? <p className="empty" role="status">기준을 불러오고 있어요.</p> : readFailed ? <p className="empty">기준을 다시 불러온 뒤 설정할 수 있어요.</p> : <CriteriaEditor catalog={catalog} rows={draft} onChange={setDraft} busy={busy} onSave={() => void save()} review={review} onCancel={() => go('home')} />)}
+      {page === 'criteria' && (!loaded ? <p className="empty" role="status">기준을 불러오고 있어요.</p> : readFailed ? <p className="empty">기준을 다시 불러온 뒤 설정할 수 있어요.</p> : <CriteriaEditor catalog={catalog} rows={draft} onChange={setDraft} busy={busy} onSave={() => void save()} review={review} onCancel={cancelCriteria} />)}
       {page === 'image' && <>
         {imageUri
           ? <section className="step-head">
@@ -396,7 +420,7 @@ function App() {
       {page === 'history' && <>
         <section className="intro"><span className="eyebrow">MY RECORDS</span><h1>지금까지<br />확인한 기록이에요.</h1><p>이 기기에만 저장돼요. 사진은 저장하지 않고, 읽은 원재료와 그때의 내 기준만 남겨요.</p></section>
         {historyMessage && <p className="notice" role="status">{historyMessage}</p>}
-        {history.length === 0 ? <section className="empty"><strong>아직 확인한 기록이 없어요.</strong><p>라벨을 확인하면 결과가 이 기기에 쌓여요.</p><button className="secondary" type="button" onClick={newPhoto}>라벨 확인하기</button></section> : <>
+        {history.length === 0 ? <section className="empty"><strong>아직 확인한 기록이 없어요.</strong><p>라벨을 확인하면 결과가 이 기기에 쌓여요.</p><button className="secondary" type="button" onClick={() => newPhoto()}>라벨 확인하기</button></section> : <>
           <div className="history-list">{history.map(entry => {
             const counts = summarize(entry)
             const open = openEntry === entry.id
@@ -436,7 +460,7 @@ function App() {
         <section className="intro"><span className="eyebrow">CHECK THE TEXT</span><h1>읽은 원재료를<br />한 번 확인해요.</h1><p>사진에서 읽은 내용이에요. 빠졌거나 잘못 읽은 부분은 고친 뒤 비교해 주세요.</p></section>
         <label className="ingredient-editor" htmlFor="ingredient-text"><span>원재료 표시</span><textarea id="ingredient-text" value={ingredientText} maxLength={12000} rows={10} onChange={event => setIngredientText(event.target.value)} placeholder="원재료명을 쉼표로 구분해 입력해 주세요." /></label>
         {analysisMessage && <p className="notice" role="status">{analysisMessage}</p>}
-        {selected.length ? <button className="primary" type="button" onClick={compareIngredients}>내 기준과 비교하기 <Icon name="arrow" size={19} /></button> : <section className="empty"><strong>비교할 내 기준이 없어요.</strong><p>기준을 먼저 설정하면 이 원재료와 대조할 수 있어요.</p><button className="secondary" type="button" onClick={() => go('criteria')}>내 기준 설정하기</button></section>}
+        {selected.length ? <button className="primary" type="button" onClick={compareIngredients}>내 기준과 비교하기 <Icon name="arrow" size={19} /></button> : <section className="empty"><strong>비교할 내 기준이 없어요.</strong><p>기준을 먼저 설정하면 이 원재료와 대조할 수 있어요.</p><button className="secondary" type="button" onClick={setCriteriaThenBack}>내 기준 설정하기</button></section>}
         <button className="text-button back-step" type="button" onClick={() => go('image')}>사진 다시 고르기</button>
       </>}
       {page === 'result' && analysis && <>
@@ -458,7 +482,7 @@ function App() {
             <p>{maybeLine(entry.kind, entry.ids, entry.corrected)}</p>
           </article>)}</section>}
         <details className="result-fold"><summary>읽은 원재료 {analysis.tokens.length}개 보기</summary><p className="read-text">{ingredientText}</p></details>
-        <div className="result-actions"><button className="primary" type="button" onClick={() => go('review')}>읽은 원재료 고치기</button><button className="secondary" type="button" onClick={newPhoto}>다른 사진 확인하기</button><button className="text-button" type="button" onClick={() => go('history')}>확인한 기록 보기</button></div>
+        <div className="result-actions"><button className="primary" type="button" onClick={() => go('review')}>읽은 원재료 고치기</button><button className="secondary" type="button" onClick={() => newPhoto()}>다른 사진 확인하기</button><button className="text-button" type="button" onClick={() => go('history')}>확인한 기록 보기</button></div>
         <p className="result-limit">이 결과는 제품의 성분 안전성, 알레르기, 함량 또는 건강 영향을 판단하지 않아요. 원재료명과 내 기준의 대조 결과예요.</p>
       </>}
     </div>
