@@ -407,7 +407,7 @@ function App() {
                   const found = entry.findings.filter(finding => finding.state === 'found')
                   const review = entry.findings.filter(finding => finding.state === 'needs_review')
                   return <>
-                    {found.length > 0 && <><h3>표기에서 발견 {found.length}가지</h3><ul>{found.map(finding => <li key={finding.criterionId}><b>{name(finding.criterionId)}</b> {finding.tokens.join(' · ')}</li>)}</ul></>}
+                    {found.length > 0 && <><h3>원재료명에서 발견 {found.length}가지</h3><ul>{found.map(finding => <li key={finding.criterionId}><b>{name(finding.criterionId)}</b> {finding.tokens.join(' · ')}</li>)}</ul></>}
                     {review.length > 0 && <><h3>가능성이 있어요 {review.length}가지</h3><ul>{review.map(finding => <li key={finding.criterionId}><b>{name(finding.criterionId)}</b> {finding.tokens.join(' · ')}</li>)}</ul></>}
                   </>
                 })()}
@@ -436,14 +436,14 @@ function App() {
         <section className={`verdict ${shown('found', 'avoid').length ? 'hit' : 'clear'}`}>
           <span className="eyebrow">내 기준 대조 결과</span>
           {shown('found', 'avoid').length
-            ? <h1>피해요로 고른 <b>{shown('found', 'avoid').length}가지</b>가<br />표기에 있어요.</h1>
+            ? <h1>피해요로 고른 <b>{shown('found', 'avoid').length}가지</b>가<br />원재료명에 있어요.</h1>
             : <h1>피해요로 고른 기준은<br />원재료명에 없었어요.</h1>}
-          <p>읽은 원재료 표기와 내 기준을 대조한 결과예요.</p>
+          <p>읽은 원재료명과 내 기준을 대조한 결과예요.</p>
         </section>
         {shown('found', 'avoid').length > 0 && <section className="result-block hit">
-          <h2>피해요 · 표기에서 찾았어요</h2>{cards(shown('found', 'avoid'))}</section>}
+          <h2>피해요 · 원재료명에서 찾았어요</h2>{cards(shown('found', 'avoid'))}</section>}
         {shown('found', 'inform').length > 0 && <section className="result-block inform">
-          <h2>알려만줘요 · 표기에서 찾았어요</h2>{cards(shown('found', 'inform'))}</section>}
+          <h2>알려만줘요 · 원재료명에서 찾았어요</h2>{cards(shown('found', 'inform'))}</section>}
         {shown('needs_review').length > 0 && <section className="result-block review">
           <h2>가능성이 있어요</h2>
           {maybe().map(([token, entry]) => <article className="finding maybe" key={token}>
@@ -452,7 +452,7 @@ function App() {
           </article>)}</section>}
         <details className="result-fold"><summary>읽은 원재료 {analysis.tokens.length}개 보기</summary><p className="read-text">{ingredientText}</p></details>
         <div className="result-actions"><button className="primary" type="button" onClick={() => go('review')}>읽은 원재료 고치기</button><button className="secondary" type="button" onClick={() => go('image')}>다른 사진 확인하기</button><button className="text-button" type="button" onClick={() => go('history')}>확인한 기록 보기</button></div>
-        <p className="result-limit">이 결과는 제품의 성분 안전성, 알레르기, 함량 또는 건강 영향을 판단하지 않아요. 표기와 내 기준의 대조 결과예요.</p>
+        <p className="result-limit">이 결과는 제품의 성분 안전성, 알레르기, 함량 또는 건강 영향을 판단하지 않아요. 원재료명과 내 기준의 대조 결과예요.</p>
       </>}
     </div>
     <input ref={fileInput} type="file" accept="image/*" hidden onChange={event => { localPhoto(event.target.files?.[0]); event.target.value = '' }} />
