@@ -42,7 +42,7 @@ export default function CriteriaEditor({ catalog, rows, onChange, busy, onSave, 
               <p className="examples">{c.examples.slice(0, 3).join(' · ') || '상세 설명을 확인해 주세요.'}</p>
               <Choices label={c.name} value={strength} onChange={next => onChange(chooseCriterion(catalog, rows, c.id, next))} />
               {inherited && <small className="inherited">{sub.name} 전체 선택에 포함</small>}
-              <details><summary>{c.name} 기준 자세히</summary><div className="criterion-detail">{c.what && <p>{c.what}</p>}{c.note && <p>{c.note}</p>}<p><b>표기 예시</b><br />{c.examples.join(', ') || '등록된 예시가 없어요.'}</p>{c.notMatched.length > 0 && <p><b>이 기준으로 찾지 않는 표기</b><br />{c.notMatched.join(', ')}</p>}{!!c.includedIn?.length && <p><b>함께 나타나는 기준</b><br />{c.includedIn.map(id => criteria.find(item => item.id === id)?.name ?? id).join(', ')}<br />표기가 겹칠 수 있어요. 선택은 각각 유지해요.</p>}</div></details>
+              <details><summary>{c.name} 기준 자세히</summary><div className="criterion-detail"><p><b>표기 예시</b><br />{c.examples.join(', ') || '등록된 예시가 없어요.'}</p>{c.notMatched.length > 0 && <p><b>이 기준으로 찾지 않는 표기</b><br />{c.notMatched.join(', ')}</p>}{!!c.includedIn?.length && <p><b>함께 나타나는 기준</b><br />{c.includedIn.map(id => criteria.find(item => item.id === id)?.name ?? id).join(', ')}<br />표기가 겹칠 수 있어요. 선택은 각각 유지해요.</p>}</div></details>
             </article>
           })}
         </section>
