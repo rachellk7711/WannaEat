@@ -167,3 +167,11 @@
 .maybe-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
 .maybe-head h3 { min-width: 0; overflow-wrap: anywhere; }
 .maybe-strength { flex: 0 1 auto; max-width: 55%; padding: 2px 9px; border-radius: 12px; background: #f3e7c4; color: #7a6528; font-size: 11px; font-weight: 700; line-height: 1.5; text-align: right; word-break: keep-all; }
+.source-guide { display: grid; gap: 10px; margin: 0 0 18px; }
+.source-guide p { display: grid; gap: 3px; margin: 0; }
+.source-guide b { color: #24392e; font-size: 14px; }
+.source-guide span { color: var(--muted); font-size: 12.5px; line-height: 1.6; word-break: keep-all; }
+.source-pick { display: flex; gap: 13px; align-items: flex-start; width: 100%; padding: 16px; border: 1px solid #dfe8d8; border-radius: 15px; background: #fff; color: var(--green); text-align: left; cursor: pointer; }
+.source-pick.main { border-color: var(--green); background: var(--sage); }
+.source-pick:disabled { opacity: .6; }
+.photo-privacy { margin: 18px 2px 0; color: var(--muted); font-size: 12px; text-align: center; }

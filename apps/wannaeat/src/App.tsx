@@ -64,9 +64,10 @@ function App() {
     return code >= 0xac00 && code <= 0xd7a3 && (code - 0xac00) % 28 === 0 ? `${word}를` : `${word}을`
   }
   const maybe = () => {
-    const byToken = new Map<string, { kind: 'flavor' | 'either' | 'plain'; ids: string[] }>()
+    const byToken = new Map<string, { kind: 'flavor' | 'either' | 'plain' | 'typo'; ids: string[]; corrected?: string }>()
     for (const finding of shown('needs_review')) for (const item of finding.evidence ?? finding.tokens.map(token => ({ token, reason: '' }))) {
-      const entry = byToken.get(item.token) ?? { kind: item.reason.startsWith('향료표기') ? 'flavor' as const : item.reason.startsWith('또는표기') ? 'either' as const : 'plain' as const, ids: [] }
+      const entry = byToken.get(item.token) ?? (item.reason.startsWith('오독:') ? { kind: 'typo' as const, ids: [], corrected: item.reason.slice(3) }
+        : { kind: item.reason.startsWith('향료표기') ? 'flavor' as const : item.reason.startsWith('또는표기') ? 'either' as const : 'plain' as const, ids: [] })
       if (!entry.ids.includes(finding.criterionId)) entry.ids.push(finding.criterionId)
       byToken.set(item.token, entry)
     }
@@ -91,8 +92,10 @@ function App() {
     const last = (code - 0xac00) % 28
     return last === 0 || last === 8 ? `${word}로` : `${word}으로`
   }
-  const maybeLine = (kind: 'flavor' | 'either' | 'plain', ids: string[]) => {
+  const maybeLine = (kind: 'flavor' | 'either' | 'plain' | 'typo', ids: string[], corrected?: string) => {
     const names = (list: string[]) => list.map(shortName).join(', ')
+    // 사진에서 글자를 잘못 읽었을 수 있다 — 고친 표기를 보여주고 그것이 무엇인지 말한다.
+    if (kind === 'typo') return `${object(corrected ?? '')} 잘못 읽었을 수 있어요. ${names(ids)}일 수 있어요.`
     if (kind === 'flavor') return `향 이름이에요. 원료로 ${object(names(ids))} 실제로 썼는지는 알 수 없어요.`
     const made = ids.filter(id => !isKind.has(id) && !asRole.has(id)), same = ids.filter(id => isKind.has(id)), role = ids.filter(id => asRole.has(id))
     const sentences = [
@@ -351,12 +354,12 @@ function App() {
               <h1>{pending ? '이 부분만 보낼게요.' : '원재료명 부분을 손가락으로 끌어 고르세요.'}</h1>
               <p>{pending ? '동의하면 원재료 글자를 읽어요.' : '고르지 않으면 사진 전체를 보내요. 글자가 누워 있으면 먼저 돌려주세요.'}</p>
             </section>
-          : <section className="intro"><span className="eyebrow">READ THE LABEL</span><h1>이름보다 자세히,<br />원재료를 봐요.</h1><p>제품의 원재료 표시가 잘 보이는 사진을 골라주세요.</p></section>}
+          : <section className="intro"><span className="eyebrow">READ THE LABEL</span><h1>원재료명이 보이는<br />사진을 넣어주세요.</h1><p>사진 속 원재료명을 읽어 내 기준과 대조해요. 두 가지 방법이 있어요.</p></section>}
         {!imageUri && <>
-          <div className="photo-frame"><LabelArt /><span>원재료명 영역을 담아주세요</span></div>
-          <div className="image-actions">
-            <button className="primary" type="button" disabled={imageBusy} onClick={() => void pickImage()}><Icon name="image" size={20} />{imageBusy ? '사진을 불러오는 중…' : '사진 선택하기'}</button>
-            <button className="secondary" type="button" disabled={imageBusy} onClick={() => void pickImage(true)}><Icon name="camera" size={20} /> 직접 촬영하기</button>
+          {/* 안내와 버튼을 하나로 — 카드를 누르면 바로 그 방법으로 사진을 고른다. */}
+          <div className="source-guide">
+            <button className="source-pick main" type="button" disabled={imageBusy} onClick={() => void pickImage()}><Icon name="image" size={22} /><p><b>{imageBusy ? '사진을 불러오는 중…' : '캡처·사진첩에서 고르기'}</b><span>쇼핑몰 상세페이지의 원재료 부분을 캡처해 둔 이미지도 돼요.</span></p></button>
+            <button className="source-pick" type="button" disabled={imageBusy} onClick={() => void pickImage(true)}><Icon name="camera" size={22} /><p><b>카메라로 찍기</b><span>제품 뒷면의 원재료명을 가까이, 흔들리지 않게 찍어주세요.</span></p></button>
           </div>
         </>}
         {imageUri && !pending && <>
@@ -379,7 +382,7 @@ function App() {
         {closed && <p className="notice" role="status">이번 달 무료 분석이 모두 끝났어요. 다음 달에 다시 열려요. 그때까지도 이미 확인한 기록은 볼 수 있어요.</p>}
         {imageMessage && <p className="notice" role="status">{imageMessage}</p>}
         {analysisMessage && <p className="notice" role="status">{analysisMessage}</p>}
-        <div className="photo-note"><strong>사진은 분석 요청에만 사용해요.</strong><p>결과를 믿기 전에 읽은 원재료를 확인하고 필요하면 고쳐 주세요. 사진은 저장하지 않아요.</p></div>
+        <p className="photo-privacy">사진은 원재료를 읽는 데만 쓰고 저장하지 않아요.</p>
       </>}
       {page === 'history' && <>
         <section className="intro"><span className="eyebrow">MY RECORDS</span><h1>지금까지<br />확인한 기록이에요.</h1><p>이 기기에만 저장돼요. 사진은 저장하지 않고, 읽은 원재료와 그때의 내 기준만 남겨요.</p></section>
@@ -443,7 +446,7 @@ function App() {
           <h2>가능성이 있어요</h2>
           {maybe().map(([token, entry]) => <article className="finding maybe" key={token}>
             <div className="maybe-head"><h3>{token}</h3><span className="maybe-strength">{strengthBadge(entry.ids)}</span></div>
-            <p>{maybeLine(entry.kind, entry.ids)}</p>
+            <p>{maybeLine(entry.kind, entry.ids, entry.corrected)}</p>
           </article>)}</section>}
         <details className="result-fold"><summary>읽은 원재료 {analysis.tokens.length}개 보기</summary><p className="read-text">{ingredientText}</p></details>
         <div className="result-actions"><button className="primary" type="button" onClick={() => go('review')}>읽은 원재료 고치기</button><button className="secondary" type="button" onClick={() => go('image')}>다른 사진 확인하기</button><button className="text-button" type="button" onClick={() => go('history')}>확인한 기록 보기</button></div>

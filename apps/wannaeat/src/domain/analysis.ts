@@ -5,7 +5,9 @@ type Confidence = '직접' | '추정'
 type Rule = { kind: RuleKind; confidence: Confidence; pattern: string }
 type CriterionRules = { rules: Rule[]; exclude: string[]; excludeSuffix: string[] }
 type OpaqueRule = { kind: '정확' | '접미' | '포함'; pattern: string }
-export type RuleSet = { rulesetVersion: string; criteria: Record<string, CriterionRules>; opaque: OpaqueRule[] }
+/** 오독 보정의 안전장치 — 보정에 쓰지 않을 패턴 자리와 예외 표기 (scripts/23_build_typo_guard.py) */
+type TypoGuard = { blocked: Set<string>; exceptions: Set<string> }
+export type RuleSet = { rulesetVersion: string; criteria: Record<string, CriterionRules>; opaque: OpaqueRule[]; typo?: TypoGuard }
 // 'unreadable'(확인 불가)는 더 이상 만들지 않는다 — 결과는 표기에 있다/없다만 말한다(2026-09-30).
 // 예전에 저장된 이력을 읽을 수 있게 형식에는 남겨 둔다.
 export type FindingState = 'found' | 'needs_review' | 'unreadable' | 'none'
@@ -34,7 +36,16 @@ export function parseRuleSet(value: unknown): RuleSet {
     if (!record(rule) || !['정확', '접미', '포함'].includes(String(rule.kind)) || typeof rule.pattern !== 'string' || !rule.pattern) throw new Error('묶음 표기 규칙 오류')
     return rule as OpaqueRule
   })
-  return { rulesetVersion: value.rulesetVersion, criteria, opaque }
+  // 예전 규칙 파일에는 typo 가 없다. 없으면 오독 보정을 하지 않는다.
+  let typo: TypoGuard | undefined
+  if (record(value.typo) && Array.isArray(value.typo.blocked) && textArray(value.typo.exceptions)) {
+    const blocked = value.typo.blocked.map(item => {
+      if (!Array.isArray(item) || typeof item[0] !== 'string' || typeof item[1] !== 'number') throw new Error('오독 보정 형식 오류')
+      return `${item[0]}#${item[1]}`
+    })
+    typo = { blocked: new Set(blocked), exceptions: new Set(value.typo.exceptions) }
+  }
+  return { rulesetVersion: value.rulesetVersion, criteria, opaque, typo }
 }
 
 const kindRank: Record<RuleKind, number> = { 정확: 0, 접두: 1, 접미: 1, 포함: 2 }
@@ -118,6 +129,41 @@ function findInToken(token: string, rules: RuleSet) {
   return hits
 }
 
+// 사진 판독은 자모 하나를 틀린다 — 옥배유→육배유(모음), 호라산→호란산(받침).
+// 기준에 걸리지 않은 표기가 직접 규칙 패턴과 자모 하나만 다르면 오독일 수 있다고 본다.
+function jamo(char: string) {
+  const code = char.charCodeAt(0) - 0xac00
+  return code >= 0 && code < 11172 ? [Math.floor(code / 588), Math.floor((code % 588) / 28), code % 28] : null
+}
+
+function oneJamoApart(a: string, b: string) {
+  const x = jamo(a), y = jamo(b)
+  return !!x && !!y && x.filter((part, index) => part !== y[index]).length === 1
+}
+
+function misread(token: string, rules: RuleSet) {
+  const found: { criterionId: string; corrected: string }[] = []
+  if (!rules.typo || token.length < 3 || rules.typo.exceptions.has(token)) return found
+  for (const [criterionId, criterionRules] of Object.entries(rules.criteria)) {
+    if (criterionRules.exclude.some(pattern => token.includes(pattern))) continue
+    for (const rule of criterionRules.rules) {
+      const pattern = rule.pattern
+      if (rule.confidence !== '직접' || rule.kind === '접미' || pattern.length < 3) continue
+      for (let start = 0; start + pattern.length <= token.length; start += 1) {
+        let at = -1, misses = 0
+        for (let index = 0; index < pattern.length && misses < 2; index += 1) {
+          if (token[start + index] !== pattern[index]) { at = index; misses += 1 }
+        }
+        if (misses !== 1 || !oneJamoApart(token[start + at], pattern[at]) || rules.typo.blocked.has(`${pattern}#${at}`)) continue
+        found.push({ criterionId, corrected: token.slice(0, start) + pattern + token.slice(start + pattern.length) })
+        break
+      }
+      if (found.some(item => item.criterionId === criterionId)) break
+    }
+  }
+  return found
+}
+
 function opaqueToken(token: string, rules: RuleSet) {
   return rules.opaque.some(rule => rule.kind === '정확' ? token === rule.pattern : rule.kind === '접미' ? token.endsWith(rule.pattern) : token.includes(rule.pattern))
 }
@@ -126,6 +172,15 @@ export function analyzeIngredients(raw: string, catalog: Catalog, selected: Map<
   // 괄호 안 하위 원료까지 모두 읽는다. 부모가 향료 표기면 그 안은 추정으로만 본다.
   const tokenSources = expand(raw).map(item => ({ source: item.raw || item.token, token: item.token, parent: item.parent, either: item.either }))
   const matches = new Map<string, { direct: { token: string; reason: string }[]; inferred: { token: string; reason: string }[] }>()
+  for (const { source, token } of tokenSources) {
+    // 어느 기준에도 걸리지 않은 표기만 오독인지 본다. 발견으로 단정하지 않고 가능성으로만 올린다.
+    if (findInToken(token, rules).length) continue
+    for (const guess of misread(token, rules)) {
+      const item = matches.get(guess.criterionId) ?? { direct: [], inferred: [] }
+      item.inferred.push({ token: source, reason: `오독:${guess.corrected}` })
+      matches.set(guess.criterionId, item)
+    }
+  }
   for (const { source, token, parent, either } of tokenSources) for (const hit of findInToken(token, rules)) {
     const item = matches.get(hit.criterionId) ?? { direct: [], inferred: [] }
     const insideFlavor = hit.confidence === '직접' && isFlavor(parent) && !flavorCriteria.has(hit.criterionId)

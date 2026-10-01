@@ -14,6 +14,8 @@ ROOT = APP.parent.parent
 CATALOG = ROOT / 'data/prepared/criteria_catalog.json'
 RULES = ROOT / 'data/curated/criteria_rules.csv'
 OPAQUE = ROOT / 'data/curated/opaque_terms.csv'
+# 오독 보정의 안전장치 — scripts/23_build_typo_guard.py 가 만든다
+TYPO = ROOT / 'data/prepared/typo_guard.json'
 
 def entries(value):
     return [item.strip().lower() for item in (value or '').split('|') if item.strip()]
@@ -21,12 +23,14 @@ def entries(value):
 catalog_bytes = CATALOG.read_bytes()
 rules_bytes = RULES.read_bytes()
 opaque_bytes = OPAQUE.read_bytes()
+typo_bytes = TYPO.read_bytes()
+typo = json.loads(typo_bytes.decode('utf-8'))
 catalog = json.loads(catalog_bytes.decode('utf-8-sig'))
 if not isinstance(catalog.get('version'), str):
     raise SystemExit('catalog version is missing')
 
 # A settings version must include matching rules, not only the picker contents.
-digest = hashlib.sha256(catalog_bytes + b'\0' + rules_bytes + b'\0' + opaque_bytes).hexdigest()[:12]
+digest = hashlib.sha256(catalog_bytes + b'\0' + rules_bytes + b'\0' + opaque_bytes + b'\0' + typo_bytes).hexdigest()[:12]
 ruleset_version = f"{catalog['version']}-{digest}"
 
 catalog_ids = {criterion['id'] for group in catalog['groups'] for subgroup in group['subgroups'] for criterion in subgroup['criteria']}
@@ -54,5 +58,5 @@ with OPAQUE.open(encoding='utf-8-sig', newline='') as source:
             opaque.append({'kind': row['규칙'], 'pattern': pattern})
 
 (APP / 'src/catalog.snapshot.json').write_text(json.dumps({'rulesetVersion': ruleset_version, 'catalog': catalog}, ensure_ascii=False, separators=(',', ':')) + '\n', encoding='utf-8')
-(APP / 'src/analysis-rules.snapshot.json').write_text(json.dumps({'rulesetVersion': ruleset_version, 'criteria': rule_set, 'opaque': opaque}, ensure_ascii=False, separators=(',', ':')) + '\n', encoding='utf-8')
+(APP / 'src/analysis-rules.snapshot.json').write_text(json.dumps({'rulesetVersion': ruleset_version, 'criteria': rule_set, 'opaque': opaque, 'typo': typo}, ensure_ascii=False, separators=(',', ':')) + '\n', encoding='utf-8')
 print(f'Ruleset {ruleset_version}: {len(catalog_ids)} criteria, {sum(len(v["rules"]) for v in rule_set.values())} rules')

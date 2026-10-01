@@ -124,3 +124,16 @@ test('a guessed match says which label word it came from and why', () => {
   // 땅콩또는견과류가공품은 둘 중 무엇인지 알 수 없다.
   assert.ok(evidence('peanut').some(item => item.reason.startsWith('또는표기')))
 })
+
+test('a one-jamo misread of an ingredient becomes a possibility, never a finding', () => {
+  const selected = new Map([['corn_oil', 'avoid'] as const, ['wheat', 'avoid'] as const, ['honey', 'avoid'] as const, ['beef', 'avoid'] as const])
+  const result = analyzeIngredients('육배유, 유기농호란산밀, 정제수, 마늘분말, 레드비트분말', catalog, selected, rules)
+  const finding = (id: string) => result.findings.find(item => item.criterionId === id)!
+  // 실제 라벨 사진에서 옥배유→육배유, 호라산밀→호란산밀 로 읽었다.
+  assert.equal(finding('corn_oil').state, 'needs_review')
+  assert.ok(finding('corn_oil').evidence?.some(item => item.token === '육배유' && item.reason === '오독:옥배유'))
+  assert.equal(finding('wheat').state, 'needs_review')
+  // 정상 단어는 비슷해 보여도 건드리지 않는다 — 마늘분말(꿀분말), 레드비트분말(비프분말).
+  assert.equal(finding('honey').state, 'none')
+  assert.equal(finding('beef').state, 'none')
+})

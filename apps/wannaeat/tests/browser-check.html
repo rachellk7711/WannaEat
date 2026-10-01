@@ -72,8 +72,8 @@ if (new URLSearchParams(location.search).get('run') !== 'isolated') {
     check(`criteria fits ${width}px`, doc().documentElement.scrollWidth <= width)
     textButton('변경 취소').click(); await wait(()=>doc().querySelector('.my-criteria'))
   }
-  textButton('라벨 확인하기').click(); await wait(()=>doc().querySelector('.photo-frame'))
-  check('photo upload explains processing', doc().querySelector('.photo-note').textContent.includes('분석 요청'))
+  textButton('라벨 확인하기').click(); await wait(()=>doc().querySelector('.source-guide'))
+  check('photo screen says how to add a photo and that it is not kept', doc().querySelectorAll('.source-pick').length === 2 && doc().querySelector('.photo-privacy').textContent.includes('저장하지 않아요'))
   localStorage.setItem('wannaeat.criteria.v2', JSON.stringify({ rulesetVersion: online.release.rulesetVersion, selections:[{kind:'criterion',id:'wheat',strength:'avoid'},{kind:'criterion',id:'sugar',strength:'inform'}] }))
   frame.src = '/?check=result#review'; await wait(()=>doc().querySelector('#ingredient-text'))
   const ingredients = doc().querySelector('#ingredient-text')

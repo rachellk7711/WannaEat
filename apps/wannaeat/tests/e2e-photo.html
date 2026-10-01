@@ -26,7 +26,7 @@ if (new URLSearchParams(location.search).get('run') !== 'isolated') {
   // 라벨 사진을 실제 파일로 고른다.
   const blob = await (await fetch('/tests/label.jpg')).blob()
   const file = new frame.contentWindow.File([blob], 'label.jpg', { type: 'image/jpeg' })
-  textButton('라벨 확인하기').click(); await wait(()=>doc().querySelector('.photo-frame'))
+  textButton('라벨 확인하기').click(); await wait(()=>doc().querySelector('.source-guide'))
   const input = doc().querySelector('input[type=file]:not([capture])')
   const transfer = new frame.contentWindow.DataTransfer()
   transfer.items.add(file)
