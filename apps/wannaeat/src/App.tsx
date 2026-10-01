@@ -199,6 +199,8 @@ function App() {
       }
       const extracted = await extractIngredients({ base64: pending.base64, mimeType: pending.mimeType }, await deviceId())
       if (typeof extracted.remaining === 'number') setRemaining(extracted.remaining)
+      // 장바구니·상품 목록에는 원재료가 없다. 무엇을 캡처해야 하는지 알려준다.
+      if (extracted.screen === 'shopping_list' && !extracted.ingredientText.trim()) throw new Error('장바구니·상품 목록 화면에는 원재료가 나오지 않아요. 상품을 눌러 상세페이지의 원재료 부분을 캡처해 주세요.')
       if (!extracted.readable || !extracted.ingredientText.trim()) throw new Error('원재료를 읽지 못했어요. 원재료명 부분이 선명한 사진을 골라주세요.')
       await rememberRead(key, extracted.ingredientText)
       setIngredientText(extracted.ingredientText)

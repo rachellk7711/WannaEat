@@ -103,12 +103,12 @@ Deno.serve(async request => {
       console.error('usage store unavailable', error instanceof Error ? error.message : error)
       return json(request, { message: '사진 읽기를 잠시 멈췄어요. 잠시 후 다시 시도해 주세요.' }, 503)
     }
-    const prompt = '사진에서 제품의 원재료명 또는 원재료 표시 부분만 그대로 읽어라. 제품명, 영양성분, 광고 문구, 알레르기 안내, 추측한 성분은 포함하지 마라. 원재료를 읽을 수 없으면 readable을 false로 하고 ingredientText는 빈 문자열로 반환하라. 쉼표로 구분된 원문을 한 줄로 보존하라.'
+    const prompt = '사진에서 제품의 원재료명 또는 원재료 표시 부분만 그대로 읽어라. 제품명, 영양성분, 광고 문구, 알레르기 안내, 추측한 성분은 포함하지 마라. 원재료를 읽을 수 없으면 readable을 false로 하고 ingredientText는 빈 문자열로 반환하라. 쉼표로 구분된 원문을 한 줄로 보존하라. screen에는 사진이 어떤 화면인지 적어라: 원재료 표시가 보이면 ingredients, 장바구니·상품 목록·검색 결과·주문 내역처럼 상품 이름과 가격만 있고 원재료 표시가 없는 쇼핑 화면이면 shopping_list, 그 밖이면 other.'
     const ask = (model: string, mediaResolution?: string) => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
       method: 'POST', headers: { 'x-goog-api-key': key, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ role: 'user', parts: [{ text: prompt }, { inline_data: { mime_type: image.mimeType, data: image.base64 } }] }],
-        generationConfig: { temperature: 0, ...(mediaResolution ? { mediaResolution } : {}), responseMimeType: 'application/json', responseSchema: { type: 'OBJECT', properties: { readable: { type: 'BOOLEAN' }, ingredientText: { type: 'STRING' } }, required: ['readable', 'ingredientText'] } },
+        generationConfig: { temperature: 0, ...(mediaResolution ? { mediaResolution } : {}), responseMimeType: 'application/json', responseSchema: { type: 'OBJECT', properties: { readable: { type: 'BOOLEAN' }, ingredientText: { type: 'STRING' }, screen: { type: 'STRING', enum: ['ingredients', 'shopping_list', 'other'] } }, required: ['readable', 'ingredientText', 'screen'] } },
       }),
       signal: AbortSignal.timeout(60_000),
     })
@@ -128,7 +128,8 @@ Deno.serve(async request => {
         }
         text = outputText(answer)
         // 읽어내지 못했으면 한 번만 더 자세히 본다. 대부분은 첫 번째에서 끝난다.
-        if (text && (JSON.parse(text).ingredientText || '').trim()) break
+        // 장바구니 같은 쇼핑 화면이면 더 자세히 봐도 원재료가 없다 — 다시 부르지 않는다.
+        if (text && ((JSON.parse(text).ingredientText || '').trim() || JSON.parse(text).screen === 'shopping_list')) break
       }
       if ((gemini?.ok && text) || ![404, 429, 500, 503].includes(gemini?.status ?? 0)) break
     }
@@ -144,7 +145,8 @@ Deno.serve(async request => {
     if (!text) return json(request, { message: '원재료를 읽지 못했어요. 원재료명 부분이 선명한 사진을 골라주세요.' }, 422)
     const result = JSON.parse(text)
     if (!result || typeof result.readable !== 'boolean' || typeof result.ingredientText !== 'string' || result.ingredientText.length > 12_000) return json(request, { message: '원재료 읽기 결과가 올바르지 않아요.' }, 502)
-    return json(request, { readable: result.readable, remaining, ingredientText: result.ingredientText.replace(/[\r\n]+/g, ' ').trim() })
+    const screen = ['ingredients', 'shopping_list', 'other'].includes(result.screen) ? result.screen : 'other'
+    return json(request, { readable: result.readable, remaining, screen, ingredientText: result.ingredientText.replace(/[\r\n]+/g, ' ').trim() })
   } catch (error) {
     if (error instanceof SyntaxError) return json(request, { message: '사진 요청을 읽지 못했어요.' }, 400)
     return json(request, { message: '원재료를 읽지 못했어요. 잠시 후 다시 시도해 주세요.' }, 500)

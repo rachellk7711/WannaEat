@@ -1,7 +1,9 @@
 import { SUPABASE_PUBLISHABLE_KEY as SUPABASE_KEY, SUPABASE_URL } from './supabase-public.ts'
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024
 
-export type ExtractedIngredients = { ingredientText: string; readable: boolean; remaining?: number; closed?: boolean }
+/** 판독 서버가 본 화면 — 장바구니처럼 원재료가 없는 쇼핑 화면이면 다르게 안내한다. */
+export type Screen = 'ingredients' | 'shopping_list' | 'other'
+export type ExtractedIngredients = { ingredientText: string; readable: boolean; remaining?: number; closed?: boolean; screen?: Screen }
 
 /** 같은 사진을 다시 보내지 않으려고 쓰는 값. 사진 자체는 어디에도 남지 않는다. */
 export async function imageKey(base64: string) {
@@ -99,7 +101,8 @@ export async function extractIngredients(image: { base64: string; mimeType: stri
     }
     const value = data as Record<string, unknown>
     if (typeof value.ingredientText !== 'string' || typeof value.readable !== 'boolean' || value.ingredientText.length > 12_000) throw new Error('분석 결과 형식이 올바르지 않아요.')
-    return { ingredientText: value.ingredientText, readable: value.readable, remaining: typeof value.remaining === 'number' ? value.remaining : undefined }
+    const screen = value.screen === 'ingredients' || value.screen === 'shopping_list' || value.screen === 'other' ? value.screen : undefined
+    return { ingredientText: value.ingredientText, readable: value.readable, remaining: typeof value.remaining === 'number' ? value.remaining : undefined, screen }
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') throw new Error('분석 시간이 길어지고 있어요. 잠시 후 다시 시도해 주세요.')
     throw error
