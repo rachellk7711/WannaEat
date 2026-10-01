@@ -375,7 +375,7 @@ function App() {
         </>}
         {pending && <section className="extract-card">
           <img className="send-preview" src={pending.preview} alt="분석 서버로 보낼 사진" />
-          <p>이 그림에 보이는 부분만 분석 서버로 전송해요. 이름·주소·주문번호가 보이면 영역을 다시 골라주세요. 서버는 사진을 저장하지 않고, 읽은 글자는 다음 화면에서 고칠 수 있어요.</p>
+          <p>이 그림에 보이는 부분만 분석 서버로 전송해요. 서버는 사진을 저장하지 않고, 읽은 글자는 다음 화면에서 고칠 수 있어요.</p>
           <label className="consent"><input type="checkbox" checked={consented} disabled={extractBusy} onChange={event => setConsented(event.target.checked)} /><span>이 사진을 보내 원재료 텍스트를 읽는 데 동의해요.</span></label>
           <button className="primary" type="button" disabled={!consented || extractBusy || closed} onClick={() => void readPhoto()}>{extractBusy ? '원재료를 읽는 중…' : '원재료 읽기'}</button>
           {remaining !== null && <p className="remaining">오늘 남은 확인 {remaining}장</p>}
