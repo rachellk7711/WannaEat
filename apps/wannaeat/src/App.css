@@ -1,6 +1,6 @@
 .app { --green: #1e634d; --sage: #edf2e5; --muted: #66736b; font-size: 14px; line-height: 1.6; min-height: 100dvh; padding-bottom: env(safe-area-inset-bottom); }
 .topbar { display: flex; align-items: center; gap: 9px; height: 64px; padding: 0 22px; border-bottom: 1px solid #f2f4ef; }
-.brand { font-weight: 750; font-size: 16px; letter-spacing: -.6px; }
+.brand { font-family: 'Arial Black', 'Segoe UI Black', 'Noto Sans KR', -apple-system, sans-serif; font-weight: 900; font-size: 17px; letter-spacing: -.4px; color: #1E634D; }
 .brand-symbol { display: inline-flex; width: 30px; height: 30px; color: var(--green); }
 .brand-symbol svg { width: 100%; }
 .topbar-dot { margin-left: auto; width: 6px; height: 6px; border-radius: 50%; background: #aec19b; }
