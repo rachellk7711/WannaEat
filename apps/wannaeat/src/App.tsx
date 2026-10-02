@@ -443,7 +443,7 @@ function App() {
       {page === 'history' && <>
         <section className="intro"><span className="eyebrow">MY RECORDS</span><h1>지금까지<br />확인한 기록이에요.</h1><p>이 기기에만 저장돼요. 사진은 저장하지 않고, 읽은 원재료와 그때의 내 기준만 남겨요.</p></section>
         {historyMessage && <p className="notice" role="status">{historyMessage}</p>}
-        {history.some(entry => !summarize(entry).avoidFound) && <p className="history-cheer"><span aria-hidden="true">🌷</span> 피해요가 없었던 제품을 <b>{history.filter(entry => !summarize(entry).avoidFound).length}개</b> 찾았어요.</p>}
+        {history.some(entry => !summarize(entry).avoidFound) && <p className="history-cheer"><span aria-hidden="true">🥗</span> 피해요가 없었던 제품을 <b>{history.filter(entry => !summarize(entry).avoidFound).length}개</b> 찾았어요.</p>}
         {history.length === 0 ? <section className="empty"><strong>아직 확인한 기록이 없어요.</strong><p>라벨을 확인하면 결과가 이 기기에 쌓여요.</p><button className="secondary" type="button" onClick={() => newPhoto()}>라벨 확인하기</button></section> : <>
           <div className="history-list">{history.map(entry => {
             const counts = summarize(entry)
@@ -452,7 +452,7 @@ function App() {
               <button className="history-head" type="button" aria-expanded={open} onClick={() => setOpenEntry(open ? null : entry.id)}>
                 <span className="history-when">{formatWhen(entry.at)}</span>
                 {entry.productName && <span className="history-name">{entry.productName}</span>}
-                <strong className={counts.avoidFound ? 'history-verdict hit' : 'history-verdict clear'}>{counts.avoidFound ? `피해요 ${counts.avoidFound}가지 있었어요` : <><span aria-hidden="true">🌼 </span>피해요 없었어요</>}{counts.found - counts.avoidFound ? ` · 알려만줘요 ${counts.found - counts.avoidFound}` : ''}{counts.needsReview ? ` · 가능성 ${counts.needsReview}` : ''}</strong>
+                <strong className={counts.avoidFound ? 'history-verdict hit' : 'history-verdict clear'}>{counts.avoidFound ? `피해요 ${counts.avoidFound}가지 있었어요` : <><span aria-hidden="true">💚 </span>피해요 없었어요</>}{counts.found - counts.avoidFound ? ` · 알려만줘요 ${counts.found - counts.avoidFound}` : ''}{counts.needsReview ? ` · 가능성 ${counts.needsReview}` : ''}</strong>
                 <span className="history-text">{entry.ingredientText}</span>
               </button>
               {open && <div className="history-detail">
@@ -491,11 +491,11 @@ function App() {
       </>}
       {page === 'result' && analysis && <>
         {(() => {
-          // 피해요가 하나도 걸리지 않은 것은 기쁜 소식이다. 가능성까지 없을 때만 꽃을 피운다.
+          // 피해요가 하나도 걸리지 않은 것은 기쁜 소식이다. 가능성까지 없을 때만 싱그럽게 축하한다.
           const hits = shown('found', 'avoid').length, maybeAvoid = shown('needs_review', 'avoid').length
           const happy = !hits && !maybeAvoid
           return <section className={`verdict ${hits ? 'hit' : happy ? 'clear happy' : 'clear'}`}>
-            {happy && <span className="verdict-bloom" aria-hidden="true"><span>🌼</span><span>🌷</span><span>✨</span></span>}
+            {happy && <span className="verdict-bloom" aria-hidden="true"><span>🥗</span><span>🍎</span><span>💚</span></span>}
             <span className="eyebrow">내 기준 대조 결과</span>
             {hits
               ? <h1>피해요로 고른 <b>{hits}가지</b>가<br />원재료명에 있어요.</h1>

@@ -190,10 +190,13 @@
 .product-name { display: grid; gap: 7px; margin-bottom: 14px; font-size: 13px; font-weight: 700; color: #2f4a3a; }
 .product-name small { font-weight: 400; color: var(--muted); font-size: 11px; margin-left: 4px; }
 .product-name input { width: 100%; box-sizing: border-box; padding: 12px 13px; border: 1px solid #dfe6da; border-radius: 13px; font: inherit; font-weight: 400; font-size: 15px; background: #fff; color: inherit; }
-/* 피해요가 없을 때는 기쁜 소식 — 꽃이 피어난다 */
+/* 피해요가 없을 때는 기쁜 소식 — 싱그러운 초록으로 눈에 띄게 */
 .verdict { position: relative; overflow: hidden; }
-.verdict.happy { background: linear-gradient(135deg, #eef6e6 0%, #fdf6e3 100%); }
-.verdict-bloom { position: absolute; top: 12px; right: 14px; display: flex; gap: 2px; font-size: 26px; line-height: 1; }
+.verdict.happy { background: radial-gradient(circle at 88% 12%, rgba(255, 255, 255, .75) 0, rgba(255, 255, 255, 0) 38%), linear-gradient(135deg, #bfe6a4 0%, #dcf3c6 48%, #fff0b8 100%); border: 1.5px solid #9fd07f; box-shadow: 0 8px 22px rgba(86, 150, 60, .18); color: #173a22; }
+.verdict.happy h1 { color: #14361f; }
+.verdict.happy p { opacity: 1; color: #2c5434; font-weight: 600; }
+.verdict.happy .eyebrow { color: #3d7a3c; opacity: 1; }
+.verdict-bloom { position: absolute; top: 12px; right: 14px; display: flex; gap: 2px; font-size: 28px; line-height: 1; filter: drop-shadow(0 2px 3px rgba(40, 90, 30, .2)); }
 .verdict-bloom span { display: inline-block; animation: bloom .7s cubic-bezier(.2, 1.4, .4, 1) both; }
 .verdict-bloom span:nth-child(2) { animation-delay: .12s; font-size: 22px; margin-top: 10px; }
 .verdict-bloom span:nth-child(3) { animation-delay: .24s; font-size: 16px; }
@@ -205,4 +208,4 @@
 .history-head strong.history-verdict { font-size: 13px; font-weight: 600; }
 .history-head strong.history-verdict.clear { color: #3f7a3a; }
 .history-head strong.history-verdict.hit { color: #a2452e; }
-.history-cheer { margin: 0 0 14px; padding: 12px 14px; border-radius: 14px; background: linear-gradient(135deg, #eef6e6, #fdf6e3); color: #35503f; font-size: 13.5px; }
+.history-cheer { margin: 0 0 14px; padding: 13px 14px; border-radius: 14px; background: linear-gradient(135deg, #cdebb6, #fff0bf); border: 1px solid #a9d68f; color: #1d4228; font-size: 13.5px; font-weight: 600; }
