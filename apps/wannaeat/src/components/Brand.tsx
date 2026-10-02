@@ -20,8 +20,15 @@ export function Icon({ name, size = 22 }: { name: IconName; size?: number }) {
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>
 }
 
+// 앱 아이콘(포크 돋보기, brand/options/fork-Y1.svg)을 작게 쓴 것. 토스 콘솔 아이콘 · 파비콘과 같은 그림이다.
 export function BrandMark({ className = '' }: { className?: string }) {
-  return <span className={`brand-symbol ${className}`} aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><path d="M8 16c0-5 3-9 8-9s8 4 8 9-3 10-8 10S8 21 8 16Z" fill="currentColor" /><path d="m12 16 3 3 6-7" stroke="var(--mark-ink, white)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /><path d="M16 7c0-3 3-4 6-3-1 3-3 4-6 3Z" fill="currentColor" /></svg></span>
+  return <span className={`brand-symbol ${className}`} aria-hidden="true"><svg viewBox="0 0 600 600" fill="none">
+    <rect width="600" height="600" rx="150" fill="#1E634D" />
+    <g transform="translate(120 98)" fill="#fff"><rect width="26" height="140" rx="13" /><rect x="48" width="26" height="140" rx="13" /><rect x="96" width="26" height="140" rx="13" /><path d="M0 120h122v20c0 40-24 60-42 66v170c0 16-12 28-19 28s-19-12-19-28V206c-18-6-42-26-42-66Z" /></g>
+    <circle cx="380" cy="330" r="104" stroke="#FFD54A" strokeWidth="32" />
+    <path d="m336 332 32 32 62-72" stroke="#fff" strokeWidth="32" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="m458 410 62 62" stroke="#FFD54A" strokeWidth="46" strokeLinecap="round" />
+  </svg></span>
 }
 
 export function LabelArt({ coral = false }: { coral?: boolean }) {
