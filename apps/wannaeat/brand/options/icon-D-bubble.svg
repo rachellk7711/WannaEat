@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 600 600">
+  <rect width="600" height="600" fill="#B6E86A"/>
+  <path d="M120 270c0-90 80-150 180-150s180 60 180 150-80 150-180 150c-22 0-43-3-62-9l-86 47 22-78c-34-27-54-65-54-110Z" fill="#1E634D"/>
+  <text x="300" y="352" text-anchor="middle" font-family="'Arial Black','Segoe UI Black',sans-serif" font-size="210" fill="#FFFFFF">?</text>
+  <path d="M352 136c4-46 50-66 98-50-14 46-52 64-98 50Z" fill="#123F2E"/>
+</svg>

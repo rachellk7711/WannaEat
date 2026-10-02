@@ -385,7 +385,7 @@ function App() {
   }
 
   return <main className="app">
-    {!isNative && <header className="topbar">{page !== 'home' ? <button className="icon-button" type="button" onClick={() => go('home')} aria-label="홈으로 돌아가기"><Icon name="back" /></button> : <BrandMark />}<span className="brand">WannaEAT?</span><span className="topbar-dot" /></header>}
+    {!isNative && <header className="topbar">{page !== 'home' ? <button className="icon-button" type="button" onClick={() => go('home')} aria-label="홈으로 돌아가기"><Icon name="back" /></button> : <BrandMark />}<span className="brand" aria-label="WannaEAT?"><span className="wanna">Wanna</span><span className="eat">EAT</span><span className="ask">?</span></span><span className="topbar-dot" /></header>}
     <div className={`content page-${page}`} ref={heading} tabIndex={-1}>
       {message && <div className="notice" role="status">{message}{readFailed && <button className="text-button" type="button" onClick={() => location.reload()}>다시 불러오기</button>}</div>}
       {page === 'home' && <>

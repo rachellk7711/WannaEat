@@ -1,6 +1,12 @@
 .app { --green: #1e634d; --sage: #edf2e5; --muted: #66736b; font-size: 14px; line-height: 1.6; min-height: 100dvh; padding-bottom: env(safe-area-inset-bottom); }
 .topbar { display: flex; align-items: center; gap: 9px; height: 64px; padding: 0 22px; border-bottom: 1px solid #f2f4ef; }
-.brand { font-family: 'Arial Black', 'Segoe UI Black', 'Noto Sans KR', -apple-system, sans-serif; font-weight: 900; font-size: 17px; letter-spacing: -.4px; color: #1E634D; }
+/* 상단 글씨 WannaEAT? — Poppins(OFL)에서 이 9글자만 뽑은 파일이라 1KB 남짓, 어느 폰에서나 같은 굵기로 보인다 */
+@font-face { font-family: 'Poppins Wordmark'; font-weight: 500; font-display: block; src: url('./assets/fonts/poppins-500-wordmark.woff2') format('woff2'); }
+@font-face { font-family: 'Poppins Wordmark'; font-weight: 900; font-display: block; src: url('./assets/fonts/poppins-900-wordmark.woff2') format('woff2'); }
+.brand { font-family: 'Poppins Wordmark', 'Arial Black', sans-serif; font-size: 19px; letter-spacing: -.4px; color: #1E634D; line-height: 1; }
+.brand .wanna { font-weight: 500; color: #4f7a62; }
+.brand .eat { font-weight: 900; }
+.brand .ask { font-weight: 900; color: #7CC242; }
 .brand-symbol { display: inline-flex; width: 30px; height: 30px; color: var(--green); }
 .brand-symbol svg { width: 100%; }
 .topbar-dot { margin-left: auto; width: 6px; height: 6px; border-radius: 50%; background: #aec19b; }
