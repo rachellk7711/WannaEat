@@ -8,7 +8,10 @@ export type Preferences = { rulesetVersion: string; selections: Selection[] }
 export type Criterion = {
   id: string; name: string; examples: string[]; notMatched: string[]; aliases: string[]
   productsFound: number; includedIn?: string[]; note?: string; what?: string
+  // 미니사전 — 음식에서 하는 일 · 사람들이 확인하는 이유 · 출처 (data/curated/criteria_glossary.csv)
+  role?: string; issue?: string; sources?: Source[]; checked?: string
 }
+export type Source = { label: string; url: string }
 export type Subgroup = { id: string; name: string; selectAll: boolean; criteria: Criterion[] }
 export type Catalog = { version: string; groups: { name: string; subgroups: Subgroup[] }[] }
 export type Release = { rulesetVersion: string; catalog: Catalog }
@@ -28,7 +31,9 @@ export function parseCatalog(value: unknown): Catalog {
       if (!record(sub) || !validId(sub.id) || subgroupIds.has(sub.id) || !nonempty(sub.name) || typeof sub.selectAll !== 'boolean' || !Array.isArray(sub.criteria) || !sub.criteria.length) throw new Error('소분류 형식 오류')
       subgroupIds.add(sub.id)
       for (const c of sub.criteria) {
-        if (!record(c) || !validId(c.id) || ids.has(c.id) || !nonempty(c.name) || !strings(c.examples) || !strings(c.notMatched) || !strings(c.aliases) || typeof c.productsFound !== 'number' || !Number.isFinite(c.productsFound) || c.productsFound < 0 || (c.note !== undefined && typeof c.note !== 'string') || (c.what !== undefined && typeof c.what !== 'string') || (c.includedIn !== undefined && !strings(c.includedIn))) throw new Error('기준 형식 오류')
+        if (!record(c) || !validId(c.id) || ids.has(c.id) || !nonempty(c.name) || !strings(c.examples) || !strings(c.notMatched) || !strings(c.aliases) || typeof c.productsFound !== 'number' || !Number.isFinite(c.productsFound) || c.productsFound < 0 || (c.note !== undefined && typeof c.note !== 'string') || (c.what !== undefined && typeof c.what !== 'string') || (c.includedIn !== undefined && !strings(c.includedIn))
+          || (c.role !== undefined && typeof c.role !== 'string') || (c.issue !== undefined && typeof c.issue !== 'string') || (c.checked !== undefined && typeof c.checked !== 'string')
+          || (c.sources !== undefined && !(Array.isArray(c.sources) && c.sources.every(source => record(source) && nonempty(source.label) && typeof source.url === 'string' && /^https:\/\//.test(source.url))))) throw new Error('기준 형식 오류')
         ids.add(c.id)
         relationships.push(...(c.includedIn as string[] | undefined ?? []))
       }

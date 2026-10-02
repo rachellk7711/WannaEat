@@ -13,6 +13,7 @@ import { addEntry, formatWhen, HISTORY_KEY, newId, parseHistory, summarize } fro
 import type { HistoryEntry } from './domain/history.ts'
 import CriteriaEditor from './components/CriteriaEditor.tsx'
 import { BrandMark, Icon, LabelArt } from './components/Brand.tsx'
+import { GlossarySheet } from './components/Glossary.tsx'
 import './App.css'
 
 type Page = 'home' | 'criteria' | 'image' | 'review' | 'result' | 'history'
@@ -47,6 +48,8 @@ function App() {
   const [history, setHistory] = useState<HistoryEntry[]>([])
   const [historyMessage, setHistoryMessage] = useState('')
   const [openEntry, setOpenEntry] = useState<string | null>(null)
+  // 결과에서 누른 기준의 미니사전
+  const [glossaryId, setGlossaryId] = useState<string | null>(null)
   const [remaining, setRemaining] = useState<number | null>(null)
   const [closed, setClosed] = useState(false)
   const fileInput = useRef<HTMLInputElement>(null)
@@ -115,10 +118,12 @@ function App() {
     ].filter(Boolean).join(' ')
     return kind === 'either' ? `둘 중 무엇인지 적혀 있지 않아요. ${sentences}` : sentences
   }
+  const glossaryOf = (id: string) => allCriteria(catalog).find(item => item.id === id && (item.role || item.issue))
   const cards = (list: { criterionId: string; tokens: string[] }[]) => list.map(finding =>
     <article className="finding" key={finding.criterionId}>
       <h3>{named(finding.criterionId)}</h3>
       {finding.tokens.length > 0 && <p>{finding.tokens.slice(0, 4).join(' · ')}{finding.tokens.length > 4 ? ` 외 ${finding.tokens.length - 4}개` : ''}</p>}
+      {glossaryOf(finding.criterionId) && <button className="text-button glossary-open" type="button" aria-label={`${named(finding.criterionId)} 알아보기`} onClick={() => setGlossaryId(finding.criterionId)}>알아보기 ›</button>}
     </article>)
 
   useEffect(() => {
@@ -135,7 +140,18 @@ function App() {
           try {
             prefs = parsePreferences(JSON.parse(raw))
             const missing = prefs.selections.filter(row => !validSelection(current.catalog, row))
-            if (prefs.rulesetVersion !== current.rulesetVersion || missing.length) setReview(`기준 목록이 업데이트됐어요. 전체 선택에 포함되는 항목과 개별 설정을 확인한 뒤 저장해 주세요.${missing.length ? ` 현재 목록에서 사용할 수 없는 항목: ${missing.map(row => row.id).join(', ')}. 저장하면 이 항목은 제외돼요.` : ''}`)
+            // 빠진 기준이 있을 때만 다시 확인을 부탁한다. 설명·규칙만 바뀐 새 목록은 조용히 이어서 쓴다(2026-10-02).
+            if (missing.length) setReview(`기준 목록이 업데이트됐어요. 전체 선택에 포함되는 항목과 개별 설정을 확인한 뒤 저장해 주세요. 현재 목록에서 사용할 수 없는 항목: ${missing.map(row => row.id).join(', ')}. 저장하면 이 항목은 제외돼요.`)
+            else if (prefs.rulesetVersion !== current.rulesetVersion) {
+              const moved = { rulesetVersion: current.rulesetVersion, selections: prefs.selections }
+              try {
+                await deviceStorage.set(`${PREFERENCES_KEY}.previous`, raw)
+                const next = JSON.stringify(moved)
+                await deviceStorage.set(PREFERENCES_KEY, next)
+                oldRaw.current = next
+                prefs = moved
+              } catch { /* 저장하지 못해도 이번 실행에서는 그대로 쓴다. */ }
+            }
           } catch { setReview('이전에 저장한 기준을 읽을 수 없어요. 기준을 다시 골라 저장해 주세요. 기존 기록은 별도로 보관해요.') }
         } else if (legacy) setReview('예전 이름 기반 설정을 새 기준으로 바꿔주세요. 피해요 / 알려만줘요를 직접 고른 뒤 저장해 주세요. 예전 기록은 유지돼요.')
         setSaved(prefs)
@@ -512,6 +528,7 @@ function App() {
           {maybe().map(([token, entry]) => <article className="finding maybe" key={token}>
             <div className="maybe-head"><h3>{token}</h3><span className="maybe-strength">{strengthBadge(entry.ids)}</span></div>
             <p>{maybeLine(entry.kind, entry.ids, entry.corrected)}</p>
+            {entry.ids.some(id => glossaryOf(id)) && <div className="maybe-links">{entry.ids.filter(id => glossaryOf(id)).map(id => <button key={id} className="text-button glossary-open" type="button" onClick={() => setGlossaryId(id)}>{shortName(id)} 알아보기 ›</button>)}</div>}
           </article>)}</section>}
         {origins.size > 0 && (() => {
           // 라벨에 적힌 그대로 옮긴다. 비율·합계는 만들지 않는다 — 원산지는 일부 원료에만 적혀 있다.
@@ -531,6 +548,7 @@ function App() {
         <p className="result-limit">이 결과는 제품의 성분 안전성, 알레르기, 함량 또는 건강 영향을 판단하지 않아요. 원재료명과 내 기준의 대조 결과예요.</p>
       </>}
     </div>
+    {glossaryId && glossaryOf(glossaryId) && <GlossarySheet criterion={glossaryOf(glossaryId)!} badge={strengthOf(glossaryId) && strengthLabels[strengthOf(glossaryId)!]} onClose={() => setGlossaryId(null)} />}
     <input ref={fileInput} type="file" accept="image/*" hidden onChange={event => { localPhoto(event.target.files?.[0]); event.target.value = '' }} />
     <input ref={cameraInput} type="file" accept="image/*" capture="environment" hidden onChange={event => { localPhoto(event.target.files?.[0]); event.target.value = '' }} />
   </main>

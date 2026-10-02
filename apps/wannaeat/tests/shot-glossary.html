@@ -1,0 +1,35 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><style>body{margin:0}iframe{width:390px;height:844px;border:0;display:block}</style></head><body>
+<iframe id="app"></iframe>
+<script type="module">
+// 미니사전을 휴대폰 폭으로 찍어 보는 준비 페이지. 서버는 부르지 않는다.  ?view=sheet | detail
+const view = new URLSearchParams(location.search).get('view') ?? 'sheet'
+const frame = document.querySelector('#app')
+const wait = async c => { for (let n = 0; n < 200; n++) { if (c()) return; await new Promise(r => setTimeout(r, 100)) } }
+localStorage.clear()
+const snapshot = await (await fetch('/src/catalog.snapshot.json')).json()
+localStorage.setItem('wannaeat.criteria.v2', JSON.stringify({ rulesetVersion: snapshot.rulesetVersion, selections: [
+  { kind: 'criterion', id: 'carrageenan', strength: 'avoid' }, { kind: 'criterion', id: 'wheat', strength: 'inform' } ] }))
+frame.src = view === 'detail' ? '/#criteria' : '/?check=glossary#review'
+const doc = () => frame.contentDocument, win = () => frame.contentWindow
+if (view === 'detail') {
+  await wait(() => doc()?.querySelector('input[type=search]'))
+  const search = doc().querySelector('input[type=search]')
+  Object.getOwnPropertyDescriptor(win().HTMLInputElement.prototype, 'value').set.call(search, '카라기난')
+  search.dispatchEvent(new (win().Event)('input', { bubbles: true }))
+  await new Promise(r => setTimeout(r, 300))
+  doc().querySelector('.criterion-row details').open = true
+  const nested = doc().querySelector('.criterion-row details details'); if (nested) nested.open = true
+  doc().querySelector('.criterion-row').scrollIntoView()
+} else {
+  await wait(() => doc()?.querySelector('#ingredient-text'))
+  const area = doc().querySelector('#ingredient-text')
+  Object.getOwnPropertyDescriptor(win().HTMLTextAreaElement.prototype, 'value').set.call(area, '정제수, 우유, 설탕, 카라기난, 밀가루')
+  area.dispatchEvent(new (win().Event)('input', { bubbles: true }))
+  await new Promise(r => setTimeout(r, 150))
+  ;[...doc().querySelectorAll('button')].find(b => b.textContent.includes('내 기준과 비교하기')).click()
+  await wait(() => doc().querySelector('.glossary-open'))
+  doc().querySelector('.glossary-open').click()
+}
+await new Promise(r => setTimeout(r, 700))
+document.title = 'ready'
+</script></body></html>

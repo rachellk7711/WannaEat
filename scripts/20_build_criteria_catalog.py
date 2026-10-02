@@ -15,7 +15,10 @@
 검색어(aliases)는 규칙이 '직접' 으로 잇는 표기 중 등장 20회 이상만 싣는다.
 판정은 서버의 규칙 엔진(18)이 한다. 이 파일은 고르고 찾는 데만 쓴다.
 
-입력  data/curated/criteria_layout.csv · criteria_rules.csv
+미니사전(2026-10-02): data/curated/criteria_glossary.csv 의 역할·쟁점·출처를 기준마다 싣는다.
+  role 은 음식에서 하는 일, issue 는 사람들이 이 원재료를 확인하는 이유다. 단정하지 않는다(docs/25).
+
+입력  data/curated/criteria_layout.csv · criteria_rules.csv · criteria_glossary.csv
       data/prepared/criteria_tokens.csv · criteria_measure.csv
 출력  data/prepared/criteria_catalog.json
 """
@@ -24,7 +27,7 @@ from collections import defaultdict
 
 PREP, CUR = "data/prepared", "data/curated"
 EXAMPLES, ALIAS_MIN, CONTAIN = 8, 20, 0.9
-RULESET_VERSION = "2026-09-18"
+RULESET_VERSION = "2026-10-02"
 
 
 def load(p):
@@ -62,6 +65,17 @@ def main():
                     included[a].append(b)
 
     found = {r["기준ID"]: int(r["발견"]) for r in load(os.path.join(PREP, "criteria_measure.csv"))}
+    with io.open(os.path.join(CUR, "criteria_glossary.csv"), encoding="utf-8-sig", newline="") as f:
+        glossary = {r["기준ID"]: r for r in csv.DictReader(f)}
+
+    def sources(text):
+        # "기관 (연도) · 제목: https://… ; 다른 출처: https://…"
+        out = []
+        for part in (text or "").split(" ; "):
+            label, sep, url = part.rpartition(": http")
+            if sep and label.strip():
+                out.append({"label": label.strip(), "url": "http" + url.strip()})
+        return out
 
     groups = {}
     for r in layout:
@@ -86,8 +100,17 @@ def main():
         # 화면에서 "이게 뭔가요" 를 바로 보여준다. 몸에 좋다·나쁘다는 적지 않는다.
         if r.get("설명"):
             item["what"] = r["설명"]
+        g = glossary.get(cid)
+        if g:
+            item["role"] = g["역할(한 줄)"].strip()
+            item["issue"] = g["쟁점(1~2줄)"].strip()
+            item["sources"] = sources(g["출처"])
+            item["checked"] = g["확인일"].strip()
         sg["criteria"].append(item)
 
+    missing = [c for c in crit if c not in glossary]
+    if missing:
+        sys.exit(f"!! 미니사전에 없는 기준: {missing}")
     out = {"version": RULESET_VERSION,
            "groups": [{"name": g["name"], "subgroups": list(g["subgroups"].values())}
                       for g in groups.values()]}
