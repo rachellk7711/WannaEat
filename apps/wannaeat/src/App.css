@@ -218,7 +218,7 @@
 .history-head strong.history-verdict.hit { color: #a2452e; }
 .history-cheer { margin: 0 0 14px; padding: 13px 14px; border-radius: 14px; background: linear-gradient(135deg, #cdebb6, #fff0bf); border: 1px solid #a9d68f; color: #1d4228; font-size: 13.5px; font-weight: 600; }
 /* 미니사전 — 음식에서 하는 일 · 알아둘 점 · 출처 */
-.glossary-line { display: grid; gap: 2px; margin: 0 0 9px; font-size: 13px; line-height: 1.6; word-break: keep-all; }
+.glossary-line { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; margin: 0 0 9px; font-size: 13px; line-height: 1.6; word-break: keep-all; overflow-wrap: anywhere; }
 .glossary-line b { font-size: 11.5px; color: #3d7a3c; }
 .glossary-source { margin: 2px 0 10px; font-size: 10.5px; line-height: 1.6; color: #8a968a; word-break: break-all; }
 .glossary-source a { color: inherit; }
