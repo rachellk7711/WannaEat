@@ -1,5 +1,5 @@
 .app { --green: #1e634d; --sage: #edf2e5; --muted: #66736b; font-size: 14px; line-height: 1.6; min-height: 100dvh; padding-bottom: env(safe-area-inset-bottom); }
-.topbar { display: flex; align-items: center; gap: 9px; height: 64px; padding: 0 22px; border-bottom: 1px solid #f2f4ef; }
+.topbar { display: flex; align-items: center; gap: 9px; height: 56px; padding: 0 22px; border-bottom: 1px solid #f2f4ef; }
 /* 상단 글씨 WannaEAT? — Poppins(OFL)에서 이 9글자만 뽑은 파일이라 1KB 남짓, 어느 폰에서나 같은 굵기로 보인다 */
 @font-face { font-family: 'Poppins Wordmark'; font-weight: 500; font-display: block; src: url('./assets/fonts/poppins-500-wordmark.woff2') format('woff2'); }
 @font-face { font-family: 'Poppins Wordmark'; font-weight: 900; font-display: block; src: url('./assets/fonts/poppins-900-wordmark.woff2') format('woff2'); }
@@ -12,6 +12,8 @@
 .topbar-dot { margin-left: auto; width: 6px; height: 6px; border-radius: 50%; background: #aec19b; }
 .icon-button { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; padding: 0; border: 0; background: none; color: inherit; margin-left: -10px; }
 .content { padding: 30px 24px 22px; outline: none; }
+/* 브라우저에서 상단 글씨 줄이 있을 때는 바로 아래 여백을 줄인다. 토스 앱 안에서는 이 줄이 없어 그대로 둔다. */
+.topbar + .content { padding-top: 18px; }
 .intro { margin-bottom: 26px; }
 .eyebrow { display: flex; align-items: center; gap: 7px; color: var(--green); font-size: 11px; font-weight: 650; letter-spacing: 1px; }
 .tiny-dot { width: 5px; height: 5px; border-radius: 50%; background: #6d916d; }
