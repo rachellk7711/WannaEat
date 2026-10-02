@@ -137,3 +137,11 @@ test('a one-jamo misread of an ingredient becomes a possibility, never a finding
   assert.equal(finding('honey').state, 'none')
   assert.equal(finding('beef').state, 'none')
 })
+
+test('tagatose is a lesser-known sugar, not grouped with allulose (2026-10-02)', () => {
+  const selected = new Map([['other_sugar', 'avoid' as const], ['rare_sugar', 'avoid' as const]])
+  const state = (text: string, id: string) => analyzeIngredients(text, catalog, selected, rules).findings.find(finding => finding.criterionId === id)?.state
+  assert.equal(state('타가토스, 정제수', 'other_sugar'), 'found')
+  assert.equal(state('타가토스, 정제수', 'rare_sugar'), 'none')
+  assert.equal(state('알룰로스, 정제수', 'rare_sugar'), 'found')
+})
