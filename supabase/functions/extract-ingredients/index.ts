@@ -103,12 +103,12 @@ Deno.serve(async request => {
       console.error('usage store unavailable', error instanceof Error ? error.message : error)
       return json(request, { message: '사진 읽기를 잠시 멈췄어요. 잠시 후 다시 시도해 주세요.' }, 503)
     }
-    const prompt = '사진에서 제품의 원재료명 또는 원재료 표시 부분만 그대로 읽어라. 제품명, 영양성분, 광고 문구, 알레르기 안내, 추측한 성분은 포함하지 마라. 원재료를 읽을 수 없으면 readable을 false로 하고 ingredientText는 빈 문자열로 반환하라. 쉼표로 구분된 원문을 한 줄로 보존하라. screen에는 사진이 어떤 화면인지 적어라: 원재료 표시가 보이면 ingredients, 장바구니·상품 목록·검색 결과·주문 내역처럼 상품 이름과 가격만 있고 원재료 표시가 없는 쇼핑 화면이면 shopping_list, 그 밖이면 other.'
+    const prompt = '사진에서 제품의 원재료명 또는 원재료 표시 부분만 그대로 읽어라. 제품명, 영양성분, 광고 문구, 알레르기 안내, 추측한 성분은 포함하지 마라. 원재료를 읽을 수 없으면 readable을 false로 하고 ingredientText는 빈 문자열로 반환하라. 쉼표로 구분된 원문을 한 줄로 보존하라. 원재료 옆 괄호 안의 원산지(예: 국산, 미국산, 외국산(미국, 중국 등))도 그대로 옮겨라. origin에는 원재료명과 따로 있는 제품의 원산지 또는 제조국 칸에 적힌 나라 이름만 적어라(예: 태국). 그런 칸이 없거나 나라 이름이 없으면(별도 표기 등) 빈 문자열로 하라. productName에는 제품명 칸에 적힌 제품 이름만 적어라. 제품명 칸이 보이지 않으면 빈 문자열로 하라. screen에는 사진이 어떤 화면인지 적어라: 원재료 표시가 보이면 ingredients, 장바구니·상품 목록·검색 결과·주문 내역처럼 상품 이름과 가격만 있고 원재료 표시가 없는 쇼핑 화면이면 shopping_list, 그 밖이면 other.'
     const ask = (model: string, mediaResolution?: string) => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
       method: 'POST', headers: { 'x-goog-api-key': key, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ role: 'user', parts: [{ text: prompt }, { inline_data: { mime_type: image.mimeType, data: image.base64 } }] }],
-        generationConfig: { temperature: 0, ...(mediaResolution ? { mediaResolution } : {}), responseMimeType: 'application/json', responseSchema: { type: 'OBJECT', properties: { readable: { type: 'BOOLEAN' }, ingredientText: { type: 'STRING' }, screen: { type: 'STRING', enum: ['ingredients', 'shopping_list', 'other'] } }, required: ['readable', 'ingredientText', 'screen'] } },
+        generationConfig: { temperature: 0, ...(mediaResolution ? { mediaResolution } : {}), responseMimeType: 'application/json', responseSchema: { type: 'OBJECT', properties: { readable: { type: 'BOOLEAN' }, ingredientText: { type: 'STRING' }, origin: { type: 'STRING' }, productName: { type: 'STRING' }, screen: { type: 'STRING', enum: ['ingredients', 'shopping_list', 'other'] } }, required: ['readable', 'ingredientText', 'screen'] } },
       }),
       signal: AbortSignal.timeout(60_000),
     })
@@ -146,7 +146,11 @@ Deno.serve(async request => {
     const result = JSON.parse(text)
     if (!result || typeof result.readable !== 'boolean' || typeof result.ingredientText !== 'string' || result.ingredientText.length > 12_000) return json(request, { message: '원재료 읽기 결과가 올바르지 않아요.' }, 502)
     const screen = ['ingredients', 'shopping_list', 'other'].includes(result.screen) ? result.screen : 'other'
-    return json(request, { readable: result.readable, remaining, screen, ingredientText: result.ingredientText.replace(/[\r\n]+/g, ' ').trim() })
+    // 수입 제품의 「원산지: 태국」 칸. 원재료 옆 괄호 속 원산지는 ingredientText 에 그대로 있다.
+    const productOrigin = typeof result.origin === 'string' ? result.origin.replace(/[\r\n]+/g, ' ').trim().slice(0, 60) : ''
+    // 기기 안 기록에서 제품을 알아보게 하는 이름. 화면에서 고칠 수 있다.
+    const productName = typeof result.productName === 'string' ? result.productName.replace(/\s+/g, ' ').trim().slice(0, 60) : ''
+    return json(request, { readable: result.readable, remaining, screen, origin: productOrigin, productName, ingredientText: result.ingredientText.replace(/[\r\n]+/g, ' ').trim() })
   } catch (error) {
     if (error instanceof SyntaxError) return json(request, { message: '사진 요청을 읽지 못했어요.' }, 400)
     return json(request, { message: '원재료를 읽지 못했어요. 잠시 후 다시 시도해 주세요.' }, 500)

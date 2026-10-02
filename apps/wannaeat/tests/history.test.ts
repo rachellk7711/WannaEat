@@ -28,10 +28,17 @@ test('a stored entry round-trips with the criteria and results of that moment', 
   const stored = parseHistory(JSON.parse(JSON.stringify([entry('one')])))
   assert.deepEqual(stored, [entry('one')])
   // 예전에 저장된 'unreadable' 이력도 읽힌다. 요약에서는 세지 않는다.
-  assert.deepEqual(summarize(stored[0]), { found: 1, needsReview: 0 })
+  assert.deepEqual(summarize(stored[0]), { found: 1, needsReview: 0, avoidFound: 1 })
 })
 
 test('unreadable history is rejected instead of being silently replaced', () => {
   for (const broken of [{}, [{ ...entry('a'), at: 'not a date' }], [{ ...entry('a'), findings: [{ criterionId: 'wheat', state: '있음', tokens: [], reasons: [] }] }],
     [{ ...entry('a'), criteria: [{ id: 'wheat', name: '밀', strength: '완전 제한' }] }], ['string']]) assert.throws(() => parseHistory(broken))
+})
+
+test('a product name is kept with the entry, and old entries without one still load', () => {
+  const named = { ...entry('n'), productName: '비밀카레 약간매운맛' }
+  assert.equal(parseHistory(JSON.parse(JSON.stringify([named])))[0].productName, '비밀카레 약간매운맛')
+  assert.equal('productName' in parseHistory([entry('o')])[0], false)
+  assert.throws(() => parseHistory([{ ...entry('l'), productName: 'x'.repeat(61) }]))
 })

@@ -19,7 +19,8 @@ export const deviceStorage = {
 }
 
 export const DEVICE_KEY = 'wannaeat.device.v1'
-export const READS_KEY = 'wannaeat.reads.v1'
+// v2 — 제품 원산지 칸을 함께 읽는다. v1 에 남은 읽기에는 그 칸이 없다.
+export const READS_KEY = 'wannaeat.reads.v2'
 export const PREFERENCES_KEY = 'wannaeat.criteria.v2'
 
 /** 기기를 구분하는 임의의 값. 하루 사용 횟수를 세는 데만 쓰고, 사람을 가리키지 않는다. */

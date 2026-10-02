@@ -1,4 +1,5 @@
 import type { Catalog, Strength } from './catalog.ts'
+import { bareCountry, originWord } from './origin-words.ts'
 
 type RuleKind = '정확' | '접두' | '접미' | '포함'
 type Confidence = '직접' | '추정'
@@ -82,10 +83,12 @@ export function splitIngredients(raw: string) {
   return result
 }
 
+export type Expanded = { parent: string; parentIndex: number; token: string; raw: string; either: boolean }
+
 /** 라벨의 괄호 안은 복합원재료의 하위 원료다 — `전분(타피오카전분, 감자전분)`.
- *  깊이에 상관없이 모두 원재료로 읽는다. 버리면 그 원료가 없는 것처럼 보인다. */
-function expand(raw: string, parent = '') {
-  const result: { parent: string; token: string; raw: string; either: boolean }[] = []
+ *  깊이에 상관없이 모두 원재료로 읽는다. 버리면 그 원료가 없는 것처럼 보인다.
+ *  parentIndex 는 감싼 원료의 자리다. 원산지가 어느 원료의 것인지 찾는 데 쓴다. */
+export function expand(raw: string, parent = '', parentIndex = -1, result: Expanded[] = []) {
   for (const item of splitIngredients(raw)) {
     let outside = '', depth = 0, inner = '', start = 0
     for (const char of item) {
@@ -98,8 +101,9 @@ function expand(raw: string, parent = '') {
     // `땅콩또는견과류가공품` 은 둘 중 하나라는 뜻이다. 나누되 둘 다 들었다고 말하지 않도록 표시해 둔다.
     const either = outside.includes('또는')
     const heads = outside.split(/[/·:]|또는/).map(piece => ({ raw: either ? outside.trim() : piece.trim(), token: normalizeIngredient(piece), either })).filter(piece => piece.token)
-    for (const head of heads) result.push({ parent, ...head })
-    if (inner.trim()) result.push(...expand(inner, heads[0]?.token ?? parent))
+    const first = result.length
+    for (const head of heads) result.push({ parent, parentIndex, ...head })
+    if (inner.trim()) expand(inner, heads[0]?.token ?? parent, heads.length ? first : parentIndex, result)
   }
   return result
 }
@@ -174,7 +178,8 @@ export function analyzeIngredients(raw: string, catalog: Catalog, selected: Map<
   const matches = new Map<string, { direct: { token: string; reason: string }[]; inferred: { token: string; reason: string }[] }>()
   for (const { source, token } of tokenSources) {
     // 어느 기준에도 걸리지 않은 표기만 오독인지 본다. 발견으로 단정하지 않고 가능성으로만 올린다.
-    if (findInToken(token, rules).length) continue
+    // `국산` · `베트남 등` 같은 원산지 낱말은 원재료가 아니다 — 오독으로 고쳐 읽지 않는다.
+    if (findInToken(token, rules).length || originWord(token) || bareCountry(token)) continue
     for (const guess of misread(token, rules)) {
       const item = matches.get(guess.criterionId) ?? { direct: [], inferred: [] }
       item.inferred.push({ token: source, reason: `오독:${guess.corrected}` })
@@ -198,5 +203,7 @@ export function analyzeIngredients(raw: string, catalog: Catalog, selected: Map<
     if (hit?.inferred.length) return { criterionId, state: 'needs_review' as const, tokens: [...new Set(hit.inferred.map(value => value.token))], reasons: [...new Set(hit.inferred.map(value => value.reason))], evidence: hit.inferred.filter((value, index, list) => list.findIndex(other => other.token === value.token) === index) }
     return { criterionId, state: 'none' as const, tokens: [], reasons: [] }
   })
-  return { tokens: [...new Set(tokenSources.map(item => item.source))], opaqueTokens: [...new Set(opaqueTokens)], findings }
+  // 원산지 낱말(`국산` · `미국`)은 원재료 개수에 넣지 않는다.
+  const ingredientTokens = tokenSources.filter(item => !originWord(item.token) && !bareCountry(item.token))
+  return { tokens: [...new Set(ingredientTokens.map(item => item.source))], opaqueTokens: [...new Set(opaqueTokens)], findings }
 }

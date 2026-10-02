@@ -175,3 +175,34 @@
 .source-pick.main { border-color: var(--green); background: var(--sage); }
 .source-pick:disabled { opacity: .6; }
 .photo-privacy { margin: 18px 2px 0; color: var(--muted); font-size: 12px; text-align: center; }
+/* 원산지 모드 — 라벨에 적힌 원산지를 적힌 그대로 */
+.origin-hint { margin: 12px 2px 0; padding: 11px 13px; border-radius: 13px; background: #f4f7ef; color: #4e5f4d; font-size: 12.5px; line-height: 1.6; word-break: keep-all; }
+.result-block.origin h2 { margin-bottom: 8px; }
+.origin-line { display: grid; grid-template-columns: 46px 1fr; gap: 8px; margin: 0 0 8px; font-size: 13.5px; line-height: 1.6; word-break: keep-all; }
+.origin-line b { color: #2f4a3a; }
+.origin-note { margin: 4px 0 0; color: #707c70; font-size: 11.5px; line-height: 1.6; word-break: keep-all; }
+.origin-group > h2 { margin: 25px 0 11px; font-size: 18px; letter-spacing: -.5px; }
+.origin-box { border: 1px solid #e2e8dd; border-radius: 17px; margin-bottom: 15px; overflow: hidden; }
+.origin-row { padding: 12px 15px; border-top: 1px solid #ecf0e6; }
+.origin-row.chosen { background: #fcfdf9; }
+.origin-row .what { margin: 2px 0 6px; color: #4e5f4d; font-size: 12.5px; line-height: 1.6; word-break: keep-all; }
+/* 제품 이름 — 기록에서 제품을 알아보게 */
+.product-name { display: grid; gap: 7px; margin-bottom: 14px; font-size: 13px; font-weight: 700; color: #2f4a3a; }
+.product-name small { font-weight: 400; color: var(--muted); font-size: 11px; margin-left: 4px; }
+.product-name input { width: 100%; box-sizing: border-box; padding: 12px 13px; border: 1px solid #dfe6da; border-radius: 13px; font: inherit; font-weight: 400; font-size: 15px; background: #fff; color: inherit; }
+/* 피해요가 없을 때는 기쁜 소식 — 꽃이 피어난다 */
+.verdict { position: relative; overflow: hidden; }
+.verdict.happy { background: linear-gradient(135deg, #eef6e6 0%, #fdf6e3 100%); }
+.verdict-bloom { position: absolute; top: 12px; right: 14px; display: flex; gap: 2px; font-size: 26px; line-height: 1; }
+.verdict-bloom span { display: inline-block; animation: bloom .7s cubic-bezier(.2, 1.4, .4, 1) both; }
+.verdict-bloom span:nth-child(2) { animation-delay: .12s; font-size: 22px; margin-top: 10px; }
+.verdict-bloom span:nth-child(3) { animation-delay: .24s; font-size: 16px; }
+@keyframes bloom { from { transform: scale(0) rotate(-30deg); opacity: 0; } to { transform: scale(1) rotate(0); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .verdict-bloom span { animation: none; } }
+.verdict.happy .eyebrow { padding-right: 84px; }
+/* 기록 — 제품 이름과 기쁜 기록 */
+.history-name { font-size: 15px; font-weight: 700; color: #1f3329; word-break: keep-all; }
+.history-head strong.history-verdict { font-size: 13px; font-weight: 600; }
+.history-head strong.history-verdict.clear { color: #3f7a3a; }
+.history-head strong.history-verdict.hit { color: #a2452e; }
+.history-cheer { margin: 0 0 14px; padding: 12px 14px; border-radius: 14px; background: linear-gradient(135deg, #eef6e6, #fdf6e3); color: #35503f; font-size: 13.5px; }

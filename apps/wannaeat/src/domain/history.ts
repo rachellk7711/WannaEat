@@ -6,6 +6,8 @@ export type HistoryCriterion = { id: string; name: string; strength: Strength }
 export type HistoryEntry = {
   id: string
   at: string
+  /** 라벨의 제품명. 사진에서 읽고 사용자가 고칠 수 있다. 예전 기록에는 없다. */
+  productName?: string
   rulesetVersion: string
   ingredientText: string
   criteria: HistoryCriterion[]
@@ -28,7 +30,8 @@ export function parseHistory(value: unknown): HistoryEntry[] {
   return value.map(entry => {
     if (!record(entry) || typeof entry.id !== 'string' || typeof entry.at !== 'string' || Number.isNaN(Date.parse(entry.at))
       || typeof entry.rulesetVersion !== 'string' || typeof entry.ingredientText !== 'string' || entry.ingredientText.length > TEXT_LIMIT
-      || !Array.isArray(entry.criteria) || !Array.isArray(entry.findings) || !textArray(entry.opaqueTokens)) throw new Error('이력 형식 오류')
+      || !Array.isArray(entry.criteria) || !Array.isArray(entry.findings) || !textArray(entry.opaqueTokens)
+      || (entry.productName !== undefined && (typeof entry.productName !== 'string' || entry.productName.length > 60))) throw new Error('이력 형식 오류')
     const criteria = entry.criteria.map(item => {
       if (!record(item) || typeof item.id !== 'string' || typeof item.name !== 'string' || !strengths.has(String(item.strength))) throw new Error('이력 기준 형식 오류')
       return item as HistoryCriterion
@@ -37,7 +40,7 @@ export function parseHistory(value: unknown): HistoryEntry[] {
       if (!record(item) || typeof item.criterionId !== 'string' || !states.has(String(item.state)) || !textArray(item.tokens) || !textArray(item.reasons)) throw new Error('이력 결과 형식 오류')
       return item as Finding
     })
-    return { id: entry.id, at: entry.at, rulesetVersion: entry.rulesetVersion, ingredientText: entry.ingredientText, criteria, findings, opaqueTokens: entry.opaqueTokens }
+    return { id: entry.id, at: entry.at, ...(entry.productName ? { productName: entry.productName as string } : {}), rulesetVersion: entry.rulesetVersion, ingredientText: entry.ingredientText, criteria, findings, opaqueTokens: entry.opaqueTokens }
   })
 }
 
@@ -52,7 +55,9 @@ export function newId() {
 
 export function summarize(entry: HistoryEntry) {
   const count = (state: Finding['state']) => entry.findings.filter(finding => finding.state === state).length
-  return { found: count('found'), needsReview: count('needs_review') }
+  const strength = (id: string) => entry.criteria.find(item => item.id === id)?.strength
+  const avoidFound = entry.findings.filter(finding => finding.state === 'found' && strength(finding.criterionId) === 'avoid').length
+  return { found: count('found'), needsReview: count('needs_review'), avoidFound }
 }
 
 export function formatWhen(at: string) {

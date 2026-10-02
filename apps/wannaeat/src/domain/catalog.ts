@@ -1,6 +1,9 @@
+import { ORIGIN_IDS } from './origin-words.ts'
+
 export type Strength = 'avoid' | 'inform'
 export const strengthLabels: Record<Strength, string> = { avoid: '피해요', inform: '알려만줘요' }
-export type Selection = { kind: 'criterion' | 'subgroup'; id: string; strength: Strength }
+// origin 은 원산지 모드의 선택이다(origin-words.ts). 카탈로그와 따로 둔다.
+export type Selection = { kind: 'criterion' | 'subgroup' | 'origin'; id: string; strength: Strength }
 export type Preferences = { rulesetVersion: string; selections: Selection[] }
 export type Criterion = {
   id: string; name: string; examples: string[]; notMatched: string[]; aliases: string[]
@@ -44,7 +47,7 @@ export function parsePreferences(value: unknown): Preferences {
   if (!record(value) || !nonempty(value.rulesetVersion) || !Array.isArray(value.selections)) throw new Error('저장된 기준 형식 오류')
   const keys = new Set<string>()
   const selections = value.selections.map(row => {
-    if (!record(row) || (row.kind !== 'criterion' && row.kind !== 'subgroup') || !validId(row.id) || (row.strength !== 'avoid' && row.strength !== 'inform')) throw new Error('저장된 기준 형식 오류')
+    if (!record(row) || (row.kind !== 'criterion' && row.kind !== 'subgroup' && row.kind !== 'origin') || !validId(row.id) || (row.strength !== 'avoid' && row.strength !== 'inform')) throw new Error('저장된 기준 형식 오류')
     const key = `${row.kind}:${row.id}`
     if (keys.has(key)) throw new Error('중복된 기준')
     keys.add(key)
@@ -57,7 +60,17 @@ export const allSubgroups = (catalog: Catalog) => catalog.groups.flatMap(group =
 export const allCriteria = (catalog: Catalog) => allSubgroups(catalog).flatMap(sub => sub.criteria)
 export function validSelection(catalog: Catalog, row: Selection) {
   return row.kind === 'criterion' ? allCriteria(catalog).some(c => c.id === row.id)
+    : row.kind === 'origin' ? ORIGIN_IDS.has(row.id)
     : allSubgroups(catalog).some(sub => sub.id === row.id && sub.selectAll)
+}
+
+export function originSelections(rows: Selection[]): Map<string, Strength> {
+  return new Map(rows.filter(row => row.kind === 'origin' && ORIGIN_IDS.has(row.id)).map(row => [row.id, row.strength]))
+}
+
+export function chooseOrigin(rows: Selection[], id: string, strength?: Strength): Selection[] {
+  const next = rows.filter(row => !(row.kind === 'origin' && row.id === id))
+  return strength ? [...next, { kind: 'origin', id, strength }] : next
 }
 
 // Explicit criterion choices override a whole-subgroup choice. includedIn is

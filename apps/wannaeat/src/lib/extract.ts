@@ -3,7 +3,7 @@ const MAX_IMAGE_BYTES = 4 * 1024 * 1024
 
 /** 판독 서버가 본 화면 — 장바구니처럼 원재료가 없는 쇼핑 화면이면 다르게 안내한다. */
 export type Screen = 'ingredients' | 'shopping_list' | 'other'
-export type ExtractedIngredients = { ingredientText: string; readable: boolean; remaining?: number; closed?: boolean; screen?: Screen }
+export type ExtractedIngredients = { ingredientText: string; readable: boolean; remaining?: number; closed?: boolean; screen?: Screen; origin?: string; productName?: string }
 
 /** 같은 사진을 다시 보내지 않으려고 쓰는 값. 사진 자체는 어디에도 남지 않는다. */
 export async function imageKey(base64: string) {
@@ -102,7 +102,10 @@ export async function extractIngredients(image: { base64: string; mimeType: stri
     const value = data as Record<string, unknown>
     if (typeof value.ingredientText !== 'string' || typeof value.readable !== 'boolean' || value.ingredientText.length > 12_000) throw new Error('분석 결과 형식이 올바르지 않아요.')
     const screen = value.screen === 'ingredients' || value.screen === 'shopping_list' || value.screen === 'other' ? value.screen : undefined
-    return { ingredientText: value.ingredientText, readable: value.readable, remaining: typeof value.remaining === 'number' ? value.remaining : undefined, screen }
+    // 수입 제품의 「원산지: 태국」 칸. 원재료 옆 괄호 속 원산지는 ingredientText 에 들어 있다.
+    const origin = typeof value.origin === 'string' && value.origin.length <= 60 ? value.origin.trim() : ''
+    const productName = typeof value.productName === 'string' && value.productName.length <= 60 ? value.productName.trim() : ''
+    return { ingredientText: value.ingredientText, readable: value.readable, remaining: typeof value.remaining === 'number' ? value.remaining : undefined, screen, origin, productName }
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') throw new Error('분석 시간이 길어지고 있어요. 잠시 후 다시 시도해 주세요.')
     throw error
