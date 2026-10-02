@@ -2,7 +2,7 @@
 <iframe id="app"></iframe>
 <script type="module">
 // 원산지 모드 · 꽃 피는 결과 · 제품 이름이 붙은 기록을 휴대폰 폭으로 찍어 보는 준비 페이지. 서버는 부르지 않는다.
-//   ?view=result | history | criteria
+//   ?view=result | history | history-open | criteria
 const view = new URLSearchParams(location.search).get('view') ?? 'result'
 const frame = document.querySelector('#app')
 const wait = async c => { for (let n = 0; n < 200; n++) { if (c()) return; await new Promise(r => setTimeout(r, 100)) } }
@@ -35,7 +35,8 @@ if (view === 'criteria') {
   await compare('생선살 듬뿍 사각어묵', '연육90%[외국산(미국, 중국, 베트남 등)/어육살, 설탕], 전분가공품[타피오카전분(베트남산), 감자전분(폴란드산)], 정제소금(중국산), 밀가루(밀:미국산)')
   if (view !== 'result') { press('읽은 원재료 고치기'); await wait(() => doc.querySelector('#product-name')) }
   if (view !== 'result') await compare('홀 토마토 통조림', '토마토(60%), 토마토 쥬스(39.9%), 구연산(0.1%)\n원산지: 이탈리아')
-  if (view === 'history') { press('확인한 기록 보기'); await wait(() => doc.querySelector('.history-list')) }
+  if (view === 'history' || view === 'history-open') { press('확인한 기록 보기'); await wait(() => doc.querySelector('.history-list')) }
+  if (view === 'history-open') { doc.querySelector('.history-head').click(); await wait(() => doc.querySelector('.history-detail')) }
   if (view === 'happy') { /* 토마토 결과 그대로 */ }
 }
 await new Promise(r => setTimeout(r, 900))

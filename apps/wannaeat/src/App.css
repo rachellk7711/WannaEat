@@ -235,3 +235,6 @@
 .sheet-head h2 { margin: 0; font-size: 19px; }
 .sheet-what { margin: 0 0 12px; color: #4e5f4d; font-size: 13px; line-height: 1.6; word-break: keep-all; }
 .glossary-sheet .secondary.wide { width: 100%; margin-top: 6px; }
+.history-criteria { margin: 10px 0 4px; }
+.history-criteria summary { cursor: pointer; color: #5d6b5c; font-size: 12.5px; padding: 4px 0; }
+.history-criteria p { margin: 6px 0 0; font-size: 12.5px; line-height: 1.6; color: #4e5f4d; word-break: keep-all; }

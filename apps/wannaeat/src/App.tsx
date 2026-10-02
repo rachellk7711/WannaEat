@@ -472,8 +472,6 @@ function App() {
                 <span className="history-text">{entry.ingredientText}</span>
               </button>
               {open && <div className="history-detail">
-                <h3>그때의 내 기준</h3>
-                <p>{entry.criteria.length ? entry.criteria.map(item => `${item.name}(${strengthLabels[item.strength]})`).join(' · ') : '기준 없음'}</p>
                 {(() => {
                   const name = (id: string) => entry.criteria.find(item => item.id === id)?.name ?? id
                   const found = entry.findings.filter(finding => finding.state === 'found')
@@ -483,6 +481,10 @@ function App() {
                     {review.length > 0 && <><h3>가능성이 있어요 {review.length}가지</h3><ul>{review.map(finding => <li key={finding.criterionId}><b>{name(finding.criterionId)}</b> {finding.tokens.join(' · ')}</li>)}</ul></>}
                   </>
                 })()}
+                {/* 기준 목록은 길다 — 궁금한 사람만 연다. */}
+                <details className="history-criteria"><summary>그때의 내 기준 {entry.criteria.length}가지 보기</summary>
+                  <p>{entry.criteria.length ? entry.criteria.map(item => `${item.name}(${strengthLabels[item.strength]})`).join(' · ') : '기준 없음'}</p>
+                </details>
                 <h3>읽은 원재료</h3>
                 <p className="history-raw">{entry.ingredientText}</p>
                 <p className="history-version">판정 규칙 {entry.rulesetVersion}</p>
