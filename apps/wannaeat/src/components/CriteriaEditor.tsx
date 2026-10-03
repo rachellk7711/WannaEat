@@ -4,9 +4,10 @@ import { ORIGIN_CHOICES } from '../domain/origin-words.ts'
 import { GlossaryBody } from './Glossary.tsx'
 import type { Catalog, Selection, Strength } from '../domain/catalog.ts'
 
-function Choices({ label, value, onChange }: { label: string; value?: Strength; onChange: (value: Strength) => void }) {
+// 고른 쪽을 한 번 더 누르면 선택이 풀린다. 작은 '해제' 글씨만으로는 되돌리는 길을 찾지 못했다(2026-10-04 피드백).
+function Choices({ label, value, onChange, onClear }: { label: string; value?: Strength; onChange: (value: Strength) => void; onClear: () => void }) {
   return <div className="strength-options" role="group" aria-label={`${label} 설정`}>
-    {(['avoid', 'inform'] as const).map(strength => <button key={strength} type="button" aria-label={`${label} ${strengthLabels[strength]}`} aria-pressed={value === strength} onClick={() => onChange(strength)}>{value === strength && <span aria-hidden="true">✓ </span>}{strengthLabels[strength]}</button>)}
+    {(['avoid', 'inform'] as const).map(strength => <button key={strength} type="button" aria-label={`${label} ${strengthLabels[strength]}`} aria-pressed={value === strength} onClick={() => value === strength ? onClear() : onChange(strength)}>{value === strength && <span aria-hidden="true">✓ </span>}{strengthLabels[strength]}</button>)}
   </div>
 }
 
@@ -28,7 +29,7 @@ export default function CriteriaEditor({ catalog, rows, onChange, busy, onSave, 
   return <>
     <section className="intro"><span className="eyebrow">MY CHECKLIST</span><h1>내가 정하는,<br />나의 식사 기준.</h1><p>확인하고 싶은 원재료를 골라주세요.<br />표시 방식은 언제든 바꿀 수 있어요.</p></section>
     {review && <p className="notice" role="status">{review}</p>}
-    <div className="strength-guide"><p><b>피해요</b><span>발견하면 눈에 띄게 표시해요.</span></p><p><b>알려만줘요</b><span>들어 있는지 가볍게 알려줘요.</span></p></div>
+    <div className="strength-guide"><p><b>피해요</b><span>발견하면 눈에 띄게 표시해요.</span></p><p><b>알려만줘요</b><span>들어 있는지 가볍게 알려줘요.</span></p><p className="strength-undo">고른 버튼을 한 번 더 누르면 선택이 풀려요.</p></div>
     <fieldset disabled={busy} className="criteria-fieldset">
       <div className="search-box"><span aria-hidden="true">⌕</span><input type="search" aria-label="원재료 검색" placeholder="밀, 박력분, 소맥분으로 찾아요" value={query} maxLength={100} onChange={event => { setQuery(event.target.value); setCategory('전체') }} /></div>
       <div className="category-tabs" role="group" aria-label="분류 선택">{['전체', ...catalog.groups.map(group => group.name), '원산지'].map(name => <button type="button" key={name} aria-pressed={category === name} onClick={() => setCategory(name)}>{name}</button>)}</div>
@@ -38,7 +39,7 @@ export default function CriteriaEditor({ catalog, rows, onChange, busy, onSave, 
         const overrides = whole && sub.criteria.some(c => rows.some(row => row.kind === 'criterion' && row.id === c.id))
         return <section className="subgroup" key={sub.id} aria-label={sub.name}>
           <div className="subgroup-heading"><h3>{sub.name}</h3><span>{sub.criteria.filter(c => effective.has(c.id)).length} / {sub.criteria.length}</span></div>
-          {sub.selectAll ? <div className="whole-select"><div className="whole-label"><strong>{sub.name} 전체</strong><small>검색 결과와 관계없이 {sub.criteria.length}개 모두</small></div><Choices label={`${sub.name} 전체`} value={overrides ? undefined : whole?.strength} onChange={strength => onChange(chooseSubgroup(catalog, rows, sub.id, strength))} />{whole && <button className="text-button" type="button" onClick={() => onChange(chooseSubgroup(catalog, rows, sub.id))}>{sub.name} 전체 해제</button>}{overrides && <small className="override-note">개별 변경한 기준이 있어요.</small>}</div> : <p className="subgroup-note">성격이 다른 원재료라 하나씩 골라요.</p>}
+          {sub.selectAll ? <div className="whole-select"><div className="whole-label"><strong>{sub.name} 전체</strong><small>검색 결과와 관계없이 {sub.criteria.length}개 모두</small></div><Choices label={`${sub.name} 전체`} value={overrides ? undefined : whole?.strength} onChange={strength => onChange(chooseSubgroup(catalog, rows, sub.id, strength))} onClear={() => onChange(chooseSubgroup(catalog, rows, sub.id))} />{whole && <button className="text-button" type="button" onClick={() => onChange(chooseSubgroup(catalog, rows, sub.id))}>{sub.name} 전체 해제</button>}{overrides && <small className="override-note">개별 변경한 기준이 있어요.</small>}</div> : <p className="subgroup-note">성격이 다른 원재료라 하나씩 골라요.</p>}
           {sub.visible.map(c => {
             const strength = effective.get(c.id)
             const inherited = whole && !rows.some(row => row.kind === 'criterion' && row.id === c.id)
@@ -46,7 +47,7 @@ export default function CriteriaEditor({ catalog, rows, onChange, busy, onSave, 
               <div className="criterion-heading"><h4>{c.name}</h4>{strength && <button className="text-button" type="button" aria-label={`${c.name} 선택 해제`} onClick={() => onChange(chooseCriterion(catalog, rows, c.id))}>해제</button>}</div>
               {c.what && <p className="what">{c.what}</p>}
               <p className="examples">{c.examples.slice(0, 3).join(' · ') || '상세 설명을 확인해 주세요.'}</p>
-              <Choices label={c.name} value={strength} onChange={next => onChange(chooseCriterion(catalog, rows, c.id, next))} />
+              <Choices label={c.name} value={strength} onChange={next => onChange(chooseCriterion(catalog, rows, c.id, next))} onClear={() => onChange(chooseCriterion(catalog, rows, c.id))} />
               {inherited && <small className="inherited">{sub.name} 전체 선택에 포함</small>}
               <details><summary>{c.name} 기준 자세히</summary><div className="criterion-detail"><GlossaryBody criterion={c} /><p><b>표기 예시</b><br />{c.examples.join(', ') || '등록된 예시가 없어요.'}</p>{c.notMatched.length > 0 && <details className="not-matched"><summary>이 기준으로 찾지 않는 표기 보기</summary><p>{c.notMatched.join(', ')}</p></details>}{!!c.includedIn?.length && <p><b>함께 나타나는 기준</b><br />{c.includedIn.map(id => criteria.find(item => item.id === id)?.name ?? id).join(', ')}<br />표기가 겹칠 수 있어요. 선택은 각각 유지해요.</p>}</div></details>
             </article>
@@ -63,7 +64,7 @@ export default function CriteriaEditor({ catalog, rows, onChange, busy, onSave, 
             return <article className={`origin-row ${strength ? 'chosen' : ''}`} key={choice.id}>
               <div className="criterion-heading"><h4>{choice.name}</h4>{strength && <button className="text-button" type="button" aria-label={`${choice.name} 선택 해제`} onClick={() => onChange(chooseOrigin(rows, choice.id))}>해제</button>}</div>
               {'what' in choice && <p className="what">{choice.what}</p>}
-              <Choices label={choice.name} value={strength} onChange={next => onChange(chooseOrigin(rows, choice.id, next))} />
+              <Choices label={choice.name} value={strength} onChange={next => onChange(chooseOrigin(rows, choice.id, next))} onClear={() => onChange(chooseOrigin(rows, choice.id))} />
             </article>
           })}
         </div>
